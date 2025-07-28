@@ -19,43 +19,40 @@ option(BUILD_TESTS "Build unit tests" ON)
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
-# set(OPENBLAS_PATH "${CMAKE_SOURCE_DIR}/../../../../../../anaconda3/lib/python3.12/site-packages/cvxopt/../cvxopt.libs/libopenblas-r0-e9c9f581.3.15.so")
-# set(LAPACK_PATH "${CMAKE_SOURCE_DIR}/../../../../../../anaconda3/lib/python3.12/site-packages/cvxopt/../cvxopt.libs/libopenblas-r0-e9c9f581.3.15.so")
-# if(NOT EXISTS ${OPENBLAS_PATH})
-    # message(FATAL_ERROR "OpenBLAS not found at ${OPENBLAS_PATH}")
-# endif()
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
 
-# 你可以根据需要调整路径方式，或通过环境变量传入
-# message(STATUS "Using OpenBLAS from: ${OPENBLAS_PATH}")
-# set(BLAS_LIBRARIES ${OPENBLAS_PATH})
-# set(LAPACK_LIBRARIES ${OPENBLAS_PATH})
 
-# Collect all source files from the src/ directory
-file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS 
-    src/base.c 
-    src/blas.c
-    src/debug.c
-    src/sparse.c
-    src/misc.c
-    src/lapack.c
-    src/dense.c
-    src/solver.c
-    src/utils.c
+# Add the ECVXCONE headers
+set(ecvxcone_headers
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/cvxopt.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/lapack.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/misc.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h"
 )
 
-# Add the public header include path
-include_directories(${PROJECT_SOURCE_DIR}/include)
+# Add the ECVXCONE sources
+set(ecvxcone_sources
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/base.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/blas.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/debug.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/dense.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lapack.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/misc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/solver.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/sparse.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils.c"
+)
 
-# Create a static library target from source files
-add_library(${PROJECT_NAME} SHARED ${LIB_SOURCES})
+# ECVXCONE library
+add_library(ecvxcone SHARED ${ecvxcone_headers} ${ecvxcone_sources})
+
+target_include_directories(ecvxcone PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE BLAS_NO_UNDERSCORE)
 
 target_link_libraries(${PROJECT_NAME} m lapack blas)
-# target_link_libraries(${PROJECT_NAME} m ${LAPACK_LIBRARIES})
-
-# add_executable(test_main tests/test_main.c)
-# target_link_libraries(test_main ${PROJECT_NAME})
 
 message(STATUS "------ Debug Info ------")
 message(STATUS "CMAKE_SOURCE_DIR        = ${CMAKE_SOURCE_DIR}")
@@ -66,26 +63,14 @@ message(STATUS "------------------------")
 
 # Conditional block to build tests if enabled
 if(BUILD_TESTS)
-    # Enable CTest support for test discovery
     enable_testing()
 
-    # Add Unity framework directory to the include path
-    # include_directories(${CMAKE_SOURCE_DIR}/unity)
-
-    # Collect all test source files
     file(GLOB TEST_FILES tests/c/*.c)
-
-    # Create test executable by linking your library
+    
     add_executable(test_main ${TEST_FILES})
+
+    target_include_directories(test_main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include) 
+
     target_link_libraries(test_main ${PROJECT_NAME})
-
-    # 添加 RPATH，告诉它运行时去哪里找动态库
-    # set_target_properties(test_main PROPERTIES
-    #     BUILD_RPATH "$ENV{HOME}/anaconda3/lib/python3.12/site-packages/cvxopt/../cvxopt.libs"
-    #     INSTALL_RPATH "$ENV{HOME}/anaconda3/lib/python3.12/site-packages/cvxopt/../cvxopt.libs"
-    # )
-
-    # target_compile_definitions(test_main PRIVATE BLAS_NO_UNDERSCORE)
-    # Register the test executable with CTest
-    # add_test(NAME YourLibTests COMMAND unit_tests)
 endif()
+

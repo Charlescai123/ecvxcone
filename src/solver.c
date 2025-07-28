@@ -81,7 +81,7 @@ void FreeWorkspaceMatrices2(
 }
 
 int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b,
-        ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws) 
+            ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws) 
 {   
     // Use custom options if provided, otherwise use global options
     bool DEBUG = settings->debug;
