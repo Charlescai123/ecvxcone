@@ -692,7 +692,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
     number* c = malloc(sizeof(number));
     if (!c) {
         ERR("memory allocation failed");
-        return;
+        return NULL;
     }
     if (id == INT)
     c->i = a.i * b.i;
@@ -719,7 +719,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
   if ((Matrix_Check(A) || a_is_number) && (Matrix_Check(B) || b_is_number)) {
 
     matrix *ret = Matrix_New(m, n, id);
-    if (!ret) return;
+    if (!ret) return NULL;
 
     int_t i;
     for (i=0; i<m*n; i++) {
@@ -742,7 +742,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
   else if (SpMatrix_Check(A) && !SpMatrix_Check(B)) {
 
     spmatrix *ret = SpMatrix_NewFromSpMatrix((spmatrix *)A, id);
-    if (!ret) return;
+    if (!ret) return NULL;
 
     int_t j, k;
     for (j=0; j<SP_NCOLS(A); j++) {
@@ -764,7 +764,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
   else if (SpMatrix_Check(B) && !SpMatrix_Check(A)) {
 
     spmatrix *ret = SpMatrix_NewFromSpMatrix((spmatrix *)B, id);
-    if (!ret) return;
+    if (!ret) return NULL;
 
     int_t j, k;
     for (j=0; j<SP_NCOLS(B); j++) {
@@ -787,7 +787,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
   else {
 
     spmatrix *ret = SpMatrix_New(m, n, 0, id);
-    if (!ret) return;
+    if (!ret) return NULL;
 
     int_t j, ka = 0, kb = 0, kret = 0;
     for (j=0; j<n; j++) {
@@ -872,7 +872,7 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
  */
 void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
 {
-  matrix *ret;
+  void *ret;
   if(A_type != 0 && A_type != 1) {
     ERR_TYPE("A must be a matrix/spmatrix or a number");
   }
@@ -915,7 +915,7 @@ void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
     number* c = malloc(sizeof(number));
     if (!c) {
         ERR("memory allocation failed");
-        return;
+        return NULL;
     }
     if (id == INT) {
       if (b.i == 0) err_division_by_zero;
@@ -952,7 +952,7 @@ void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
 
   if ((Matrix_Check(A) || a_is_number) && (Matrix_Check(B) || b_is_number)) {
     if (!(ret = (matrix *)Matrix_New(m, n, id)))
-      return;
+      return NULL;
 
     int i;
     for (i=0; i<m*n; i++) {
@@ -982,7 +982,7 @@ void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
   else { // (SpMatrix_Check(A) && !SpMatrix_Check(B)) {
 
     if (!(ret = (spmatrix *)SpMatrix_NewFromSpMatrix((spmatrix *)A, id)))
-      return;
+      return NULL;
 
     int j, k;
     for (j=0; j<SP_NCOLS(A); j++) {
