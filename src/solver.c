@@ -80,8 +80,8 @@ void FreeWorkspaceMatrices2(
     Matrix_Free(ws3);
 }
 
-int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-            ECVXConeSettings* settings, ECVXConeContext* ecvxcone_ctx) 
+int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b,
+        ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws) 
 {   
     // Use custom options if provided, otherwise use global options
     bool DEBUG = settings->debug;
@@ -96,25 +96,26 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
     int EXPON = settings->EXPON;
     double STEP = settings->STEP;
 
-    PrimalStart* primalstart = ecvxcone_ctx->primalstart;
-    DualStart* dualstart = ecvxcone_ctx->dualstart;
-    ECVXConeResult* result = ecvxcone_ctx->result;
+    PrimalStart* primalstart = ecvxcone_ws->primalstart;
+    DualStart* dualstart = ecvxcone_ws->dualstart;
+    ECVXConeResult* result = ecvxcone_ws->result;
+    DIMs* dims = ecvxcone_ws->dims;
 
     // sum of the dimensions (q and s)
-    int sum_dims_q = ecvxcone_ctx->sum_dims_q;
-    int sum_dims_s = ecvxcone_ctx->sum_dims_s;
+    int sum_dims_q = ecvxcone_ws->sum_dims_q;
+    int sum_dims_s = ecvxcone_ws->sum_dims_s;
 
     // Cone dimensions
-    int cdim = ecvxcone_ctx->cdim;
-    int cdim_pckd = ecvxcone_ctx->cdim_pckd;
-    int cdim_diag = ecvxcone_ctx->cdim_diag;
-    
+    int cdim = ecvxcone_ws->cdim;
+    int cdim_pckd = ecvxcone_ws->cdim_pckd;
+    int cdim_diag = ecvxcone_ws->cdim_diag;
+
     // Data for kth 'q' constraint are found in rows indq[k]:indq[k+1] of G
-    int *indq = ecvxcone_ctx->indq;
-    
+    int *indq = ecvxcone_ws->indq;
+
     // Data for kth 's' constraint are found in rows inds[k]:inds[k+1] of G
-    int *inds = ecvxcone_ctx->inds;
-    
+    int *inds = ecvxcone_ws->inds;
+
     // kktsolver(W) returns a routine for solving 3x3 block KKT system
     //
     //     [ 0   A'  G'*W^{-1} ] [ ux ]   [ bx ]
@@ -172,7 +173,7 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
         //     [ A   0   0  ].
         //     [ G   0  -I  ]
 
-        W = ecvxcone_ctx->W_init;
+        W = ecvxcone_ws->W_init;
         if (W == NULL) {
             ERR("Error: Dummy scaling structure is NULL");
         }

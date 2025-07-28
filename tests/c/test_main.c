@@ -14,11 +14,11 @@ int TEST_TIMES = 1000;
 
 extern matrix* load_txt_as_matrix(const char* filename);
 extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int ncols);
-extern ECVXConeContext* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+extern ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
                                 ECVXConeSettings* settings);
-extern void ecvxcone_free(ECVXConeContext *ecvxcone_ctx);
-extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, DIMs* dims,
-                    ECVXConeSettings* settings, ECVXConeContext* ecvxcone_ctx);
+extern void ecvxcone_free(ECVXConeWorkspace *ecvxcone_ws);
+extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, 
+                ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws);
 
 extern void print_matrix(matrix *m);
 
@@ -81,27 +81,27 @@ void test_conelp() {
     PrimalStart *primalstart = NULL;
     DualStart *dualstart = NULL;    
 
-    ECVXConeContext *ecvxcone_ctx = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
+    ECVXConeWorkspace *ecvxcone_ws = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
 
     int status;
-    status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
+    status = conelp(c, G_sp, h, A, b, &ecvxcone_settings, ecvxcone_ws);
 
-    // print_matrix_(ecvxcone_ctx->result->x, "Result x");
-    // print_matrix_(ecvxcone_ctx->result->s, "Result s");
-    // print_matrix_(ecvxcone_ctx->result->y, "Result y");
-    // print_matrix_(ecvxcone_ctx->result->z, "Result z");
-    printf("ConeLPResult status: %s\n", ecvxcone_ctx->result->status);
+    // print_matrix_(ecvxcone_ws->result->x, "Result x");
+    // print_matrix_(ecvxcone_ws->result->s, "Result s");
+    // print_matrix_(ecvxcone_ws->result->y, "Result y");
+    // print_matrix_(ecvxcone_ws->result->z, "Result z");
+    printf("ConeLPResult status: %s\n", ecvxcone_ws->result->status);
 
     // int test_time = 1;
     int test_time = TEST_TIMES;
     struct timeval start, end;
     gettimeofday(&start, NULL);
     for (int i = 0; i < test_time; ++i) {
-        status = conelp(c, G_sp, h, A, b, &dims, &ecvxcone_settings, ecvxcone_ctx);
-        Matrix_Free(ecvxcone_ctx->result->x);
-        // Matrix_Free(ecvxcone_ctx->result->s);
-        // Matrix_Free(ecvxcone_ctx->result->y);
-        // Matrix_Free(ecvxcone_ctx->result->z);
+        status = conelp(c, G_sp, h, A, b, &ecvxcone_settings, ecvxcone_ws);
+        Matrix_Free(ecvxcone_ws->result->x);
+        // Matrix_Free(ecvxcone_ws->result->s);
+        // Matrix_Free(ecvxcone_ws->result->y);
+        // Matrix_Free(ecvxcone_ws->result->z);
     }
     gettimeofday(&end, NULL);
 
@@ -109,7 +109,7 @@ void test_conelp() {
                    + (end.tv_usec - start.tv_usec) / 1e6;
     double avg_time = elapsed / test_time * 1e3;
     printf("Average time per iteration (Running %d times): %.6f milliseconds\n", test_time, avg_time);
-    printf("ConeLPResult status: %s\n", ecvxcone_ctx->result->status);
+    printf("ConeLPResult status: %s\n", ecvxcone_ws->result->status);
 
     Matrix_Free(c);
     Matrix_Free(h);

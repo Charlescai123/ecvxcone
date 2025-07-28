@@ -6,7 +6,7 @@ void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs);
 void validate_problem_data(matrix *c, void *G, matrix *h, void *A, matrix *b, int cdim);
 void validate_cone_dimensions(DIMs* dims);
 void validate_kktsolver(DIMs* dims, const char* kktsolver);
-ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
+ECVXConeWorkspace *ECVXConeWorkspace_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
 
 /**
  * Initialize the ConeLPResult structure.
@@ -14,38 +14,38 @@ ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart
  *
  * @param result Pointer to the ConeLPResult structure to initialize.
  */
-ECVXConeContext* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
                             ECVXConeSettings* settings) 
 {
-    ECVXConeContext *ecvxcone_ctx = ECVXConeCtx_Init(NULL, NULL, dims);
+    ECVXConeWorkspace *ecvxcone_ws = ECVXConeWorkspace_Init(NULL, NULL, dims);
     validate_cone_dimensions(dims); // Validate the cone dimensions
     validate_ecvxcone_settings(dims, settings);    // Validate the settings
-    validate_problem_data(c, G, h, A, b, ecvxcone_ctx->cdim); // Validate the problem data
+    validate_problem_data(c, G, h, A, b, ecvxcone_ws->cdim); // Validate the problem data
 
-    return ecvxcone_ctx;
+    return ecvxcone_ws;
 }
 
-void ecvxcone_free(ECVXConeContext *ecvxcone_ctx) 
+void ecvxcone_free(ECVXConeWorkspace *ecvxcone_ws) 
 {
-    if (ecvxcone_ctx) {
-        if (ecvxcone_ctx->primalstart) {
-            Matrix_Free(ecvxcone_ctx->primalstart->x);
-            Matrix_Free(ecvxcone_ctx->primalstart->s);
-            free(ecvxcone_ctx->primalstart);
+    if (ecvxcone_ws) {
+        if (ecvxcone_ws->primalstart) {
+            Matrix_Free(ecvxcone_ws->primalstart->x);
+            Matrix_Free(ecvxcone_ws->primalstart->s);
+            free(ecvxcone_ws->primalstart);
         }
-        if (ecvxcone_ctx->dualstart) {
-            Matrix_Free(ecvxcone_ctx->dualstart->y);
-            Matrix_Free(ecvxcone_ctx->dualstart->z);
-            free(ecvxcone_ctx->dualstart);
+        if (ecvxcone_ws->dualstart) {
+            Matrix_Free(ecvxcone_ws->dualstart->y);
+            Matrix_Free(ecvxcone_ws->dualstart->z);
+            free(ecvxcone_ws->dualstart);
         }
-        if (ecvxcone_ctx->result) {
-            ECVXConeResult_Free(ecvxcone_ctx->result);
+        if (ecvxcone_ws->result) {
+            ECVXConeResult_Free(ecvxcone_ws->result);
         }
-        Scaling_Free(ecvxcone_ctx->W_init);
-        Scaling_Free(ecvxcone_ctx->W_nt);
-        free(ecvxcone_ctx->indq);
-        free(ecvxcone_ctx->inds);
-        free(ecvxcone_ctx);
+        Scaling_Free(ecvxcone_ws->W_init);
+        Scaling_Free(ecvxcone_ws->W_nt);
+        free(ecvxcone_ws->indq);
+        free(ecvxcone_ws->inds);
+        free(ecvxcone_ws);
     }
 }
 
@@ -330,72 +330,73 @@ scaling *init_nt_scaling(DIMs *dims)
 }
 
 /**
- * Initialize the ECVXCONE context.
- * This function sets up the context for the ECVXCONE solver with the provided dimensions and start values.
+ * Initialize the ECVXCONE workspace.
+ * This function sets up the workspace for the ECVXCONE solver with the provided dimensions and start values.
  *
  * @param primalstart Pointer to the PrimalStart structure containing primal start values.
  * @param dualstart Pointer to the DualStart structure containing dual start values.
  * @param dims Pointer to the DIMs structure containing the dimensions of the problem.
- * @return Pointer to the initialized ECVXCONECtx structure.
+ * @return Pointer to the initialized ECVXConeWorkspace structure.
  */
-ECVXConeContext *ECVXConeCtx_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
+ECVXConeWorkspace *ECVXConeWorkspace_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
 {
-    ECVXConeContext *ctx = (ECVXConeContext*)malloc(sizeof(ECVXConeContext));
-    if (!ctx) err_no_memory;
+    ECVXConeWorkspace *ecvxcone_ws = (ECVXConeWorkspace*)malloc(sizeof(ECVXConeWorkspace));
+    if (!ecvxcone_ws) err_no_memory;
 
     ECVXConeResult *result = ECVXConeResult_Init(); 
     if (!result) err_no_memory;
 
-    ctx->result = result;
+    ecvxcone_ws->dims = dims;
+    ecvxcone_ws->result = result;
 
-    ctx->primalstart = primalstart;
-    ctx->dualstart = dualstart;
-    
-    ctx->sum_dims_q = sum_array(dims->q, dims->q_size);
-    ctx->sum_dims_s = sum_array(dims->s, dims->s_size);
+    ecvxcone_ws->primalstart = primalstart;
+    ecvxcone_ws->dualstart = dualstart;
+
+    ecvxcone_ws->sum_dims_q = sum_array(dims->q, dims->q_size);
+    ecvxcone_ws->sum_dims_s = sum_array(dims->s, dims->s_size);
 
     // Calculate cone dimensions
-    ctx->cdim = dims->l;
-    ctx->cdim_pckd = dims->l;
-    ctx->cdim_diag = dims->l;
+    ecvxcone_ws->cdim = dims->l;
+    ecvxcone_ws->cdim_pckd = dims->l;
+    ecvxcone_ws->cdim_diag = dims->l;
 
     for (int i = 0; i < dims->q_size; ++i) {
-        ctx->cdim += dims->q[i];
-        ctx->cdim_pckd += dims->q[i];
-        ctx->cdim_diag += dims->q[i];
+        ecvxcone_ws->cdim += dims->q[i];
+        ecvxcone_ws->cdim_pckd += dims->q[i];
+        ecvxcone_ws->cdim_diag += dims->q[i];
     }
 
     for (int i = 0; i < dims->s_size; ++i) {
-        ctx->cdim += dims->s[i] * dims->s[i];
-        ctx->cdim_pckd += dims->s[i] * (dims->s[i] + 1) / 2;
-        ctx->cdim_diag += dims->s[i];
+        ecvxcone_ws->cdim += dims->s[i] * dims->s[i];
+        ecvxcone_ws->cdim_pckd += dims->s[i] * (dims->s[i] + 1) / 2;
+        ecvxcone_ws->cdim_diag += dims->s[i];
     }
 
     // Data for kth 'q' constraint are found in rows indq[k]:indq[k+1] of G
-    ctx->indq = (int*)malloc((dims->q_size + 1) * sizeof(int));
-    if (ctx->indq == NULL) err_no_memory;
-    ctx->indq[0] = dims->l;
+    ecvxcone_ws->indq = (int*)malloc((dims->q_size + 1) * sizeof(int));
+    if (ecvxcone_ws->indq == NULL) err_no_memory;
+    ecvxcone_ws->indq[0] = dims->l;
     for (int k = 0; k < dims->q_size; ++k) {
-        ctx->indq[k + 1] = ctx->indq[k] + dims->q[k];
+        ecvxcone_ws->indq[k + 1] = ecvxcone_ws->indq[k] + dims->q[k];
     }
     
     // Data for kth 's' constraint are found in rows inds[k]:inds[k+1] of G
-    ctx->inds = (int*)malloc((dims->s_size + 1) * sizeof(int));
-    if (ctx->inds == NULL) err_no_memory;
-    ctx->inds[0] = ctx->indq[dims->q_size];
+    ecvxcone_ws->inds = (int*)malloc((dims->s_size + 1) * sizeof(int));
+    if (ecvxcone_ws->inds == NULL) err_no_memory;
+    ecvxcone_ws->inds[0] = ecvxcone_ws->indq[dims->q_size];
     for (int k = 0; k < dims->s_size; ++k) {
-        ctx->inds[k + 1] = ctx->inds[k] + dims->s[k] * dims->s[k];
+        ecvxcone_ws->inds[k + 1] = ecvxcone_ws->inds[k] + dims->s[k] * dims->s[k];
     }
 
     // Initialize scaling structure
     if (primalstart == NULL || dualstart == NULL) {
-        ctx->W_init = init_identity_scaling(dims);
+        ecvxcone_ws->W_init = init_identity_scaling(dims);
     } else {
-        ctx->W_init = NULL; // No dummy scaling structure needed
+        ecvxcone_ws->W_init = NULL; // No dummy scaling structure needed
     }
 
     // Initialize scaling structure for iterations
-    ctx->W_nt = init_nt_scaling(dims);
+    ecvxcone_ws->W_nt = init_nt_scaling(dims);
 
-    return ctx;
+    return ecvxcone_ws;
 }

@@ -97,7 +97,7 @@ typedef struct {
 typedef struct {
     // matrix *G; // Coefficient matrix for the linear term
     // matrix *h; // Right-hand side vector
-    // DIMs *dims; // Dimensions of the problem
+    DIMs *dims; // Dimensions of the problem
     // void *A; // Coefficient matrix for the constraints
     // matrix *b; // Right-hand side vector for the constraints
     PrimalStart *primalstart; // Primal start values
@@ -117,7 +117,7 @@ typedef struct {
     scaling *W_nt; // Scaling structure for iterations
 
     ECVXConeResult *result; // Result structure
-} ECVXConeContext;
+} ECVXConeWorkspace;
 
 
 // Function declarations
