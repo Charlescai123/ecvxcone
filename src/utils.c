@@ -6,7 +6,29 @@ void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs);
 void validate_problem_data(matrix *c, void *G, matrix *h, void *A, matrix *b, int cdim);
 void validate_cone_dimensions(DIMs* dims);
 void validate_kktsolver(DIMs* dims, const char* kktsolver);
-ECVXConeWorkspace *ECVXConeWorkspace_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
+ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A, matrix *b, 
+                                        PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
+ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
+                                ECVXConeSettings* settings);
+ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings);
+
+/**
+ * Setup the ECVXConeWorkspace structure.
+ */
+ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings)
+{
+    matrix *c = Matrix_New(n_var, 1, DOUBLE);
+    matrix *h = Matrix_New(n_ineq, 1, DOUBLE);
+    matrix *b = Matrix_New(n_eq, 1, DOUBLE);
+    void *G = SpMatrix_New(n_ineq, n_var, nnz_G, DOUBLE);
+    void *A = SpMatrix_New(n_eq, n_var, nnz_A, DOUBLE);
+
+    if (!c || !h || !b || !G || !A) {
+        err_no_memory;
+    }
+    return ecvxcone_init(c, G, h, A, b, dims, settings);
+}
+
 
 /**
  * Initialize the ConeLPResult structure.
@@ -15,38 +37,14 @@ ECVXConeWorkspace *ECVXConeWorkspace_Init(PrimalStart *primalstart, DualStart *d
  * @param result Pointer to the ConeLPResult structure to initialize.
  */
 ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
-                            ECVXConeSettings* settings) 
+                                ECVXConeSettings* settings) 
 {
-    ECVXConeWorkspace *ecvxcone_ws = ECVXConeWorkspace_Init(NULL, NULL, dims);
+    ECVXConeWorkspace *ecvxcone_ws = ECVXConeWorkspace_Init(c, G, h, A, b, NULL, NULL, dims);
     validate_cone_dimensions(dims); // Validate the cone dimensions
     validate_ecvxcone_settings(dims, settings);    // Validate the settings
     validate_problem_data(c, G, h, A, b, ecvxcone_ws->cdim); // Validate the problem data
 
     return ecvxcone_ws;
-}
-
-void ecvxcone_free(ECVXConeWorkspace *ecvxcone_ws) 
-{
-    if (ecvxcone_ws) {
-        if (ecvxcone_ws->primalstart) {
-            Matrix_Free(ecvxcone_ws->primalstart->x);
-            Matrix_Free(ecvxcone_ws->primalstart->s);
-            free(ecvxcone_ws->primalstart);
-        }
-        if (ecvxcone_ws->dualstart) {
-            Matrix_Free(ecvxcone_ws->dualstart->y);
-            Matrix_Free(ecvxcone_ws->dualstart->z);
-            free(ecvxcone_ws->dualstart);
-        }
-        if (ecvxcone_ws->result) {
-            ECVXConeResult_Free(ecvxcone_ws->result);
-        }
-        Scaling_Free(ecvxcone_ws->W_init);
-        Scaling_Free(ecvxcone_ws->W_nt);
-        free(ecvxcone_ws->indq);
-        free(ecvxcone_ws->inds);
-        free(ecvxcone_ws);
-    }
 }
 
 /**
@@ -330,18 +328,34 @@ scaling *init_nt_scaling(DIMs *dims)
 }
 
 /**
- * Initialize the ECVXCONE workspace.
- * This function sets up the workspace for the ECVXCONE solver with the provided dimensions and start values.
+ * Initialize the ECVXConeWorkspace structure.
+ * This function sets up the workspace with the provided data and dimensions.
  *
- * @param primalstart Pointer to the PrimalStart structure containing primal start values.
- * @param dualstart Pointer to the DualStart structure containing dual start values.
- * @param dims Pointer to the DIMs structure containing the dimensions of the problem.
+ * @param c Coefficient matrix for the linear term.
+ * @param G Coefficient matrix for the constraints.
+ * @param h Right-hand side vector.
+ * @param A Coefficient matrix for the constraints.
+ * @param b Right-hand side vector for the constraints.
+ * @param primalstart Pointer to the primal start values.
+ * @param dualstart Pointer to the dual start values.
+ * @param dims Pointer to the DIMs structure containing the dimensions.
+ * 
  * @return Pointer to the initialized ECVXConeWorkspace structure.
  */
-ECVXConeWorkspace *ECVXConeWorkspace_Init(PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
+ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A, matrix *b, 
+                                        PrimalStart *primalstart, DualStart *dualstart, DIMs *dims) 
 {
     ECVXConeWorkspace *ecvxcone_ws = (ECVXConeWorkspace*)malloc(sizeof(ECVXConeWorkspace));
     if (!ecvxcone_ws) err_no_memory;
+
+    ECVXConeData *data = (ECVXConeData*)malloc(sizeof(ECVXConeData));
+    if (!data) err_no_memory;
+    data->c = c;
+    data->G = G;
+    data->h = h;
+    data->A = A;
+    data->b = b;   
+    ecvxcone_ws->data = data;
 
     ECVXConeResult *result = ECVXConeResult_Init(); 
     if (!result) err_no_memory;

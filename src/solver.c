@@ -80,8 +80,7 @@ void FreeWorkspaceMatrices2(
     Matrix_Free(ws3);
 }
 
-int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b,
-            ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws) 
+int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings) 
 {   
     // Use custom options if provided, otherwise use global options
     bool DEBUG = settings->debug;
@@ -99,6 +98,11 @@ int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b,
     PrimalStart* primalstart = ecvxcone_ws->primalstart;
     DualStart* dualstart = ecvxcone_ws->dualstart;
     ECVXConeResult* result = ecvxcone_ws->result;
+    matrix *c = ecvxcone_ws->data->c;
+    void *G = ecvxcone_ws->data->G;
+    matrix *h = ecvxcone_ws->data->h;
+    void *A = ecvxcone_ws->data->A;
+    matrix *b = ecvxcone_ws->data->b;
     DIMs* dims = ecvxcone_ws->dims;
 
     // sum of the dimensions (q and s)

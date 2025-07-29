@@ -17,8 +17,7 @@ extern spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows
 extern ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
                                 ECVXConeSettings* settings);
 extern void ecvxcone_free(ECVXConeWorkspace *ecvxcone_ws);
-extern int conelp(matrix* c, void* G, matrix* h, void* A, matrix* b, 
-                ECVXConeSettings* settings, ECVXConeWorkspace* ecvxcone_ws);
+extern int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings);
 
 extern void print_matrix(matrix *m);
 
@@ -84,9 +83,9 @@ void test_conelp() {
     ECVXConeWorkspace *ecvxcone_ws = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
 
     int status;
-    status = conelp(c, G_sp, h, A, b, &ecvxcone_settings, ecvxcone_ws);
+    status = conelp(ecvxcone_ws, &ecvxcone_settings);
 
-    // print_matrix_(ecvxcone_ws->result->x, "Result x");
+    print_matrix_(ecvxcone_ws->result->x, "Result x");
     // print_matrix_(ecvxcone_ws->result->s, "Result s");
     // print_matrix_(ecvxcone_ws->result->y, "Result y");
     // print_matrix_(ecvxcone_ws->result->z, "Result z");
@@ -97,7 +96,7 @@ void test_conelp() {
     struct timeval start, end;
     gettimeofday(&start, NULL);
     for (int i = 0; i < test_time; ++i) {
-        status = conelp(c, G_sp, h, A, b, &ecvxcone_settings, ecvxcone_ws);
+        status = conelp(ecvxcone_ws, &ecvxcone_settings);
         Matrix_Free(ecvxcone_ws->result->x);
         // Matrix_Free(ecvxcone_ws->result->s);
         // Matrix_Free(ecvxcone_ws->result->y);
@@ -111,13 +110,13 @@ void test_conelp() {
     printf("Average time per iteration (Running %d times): %.6f milliseconds\n", test_time, avg_time);
     printf("ConeLPResult status: %s\n", ecvxcone_ws->result->status);
 
-    Matrix_Free(c);
-    Matrix_Free(h);
-    Matrix_Free(b);
-    SpMatrix_Free(A);           // 如果你用的是 dense matrix
-    SpMatrix_Free(G_sp);      // 如果 A 是 sparse matrix，这一行换掉 Matrix_Free(A)
+    // Matrix_Free(c);
+    // Matrix_Free(h);
+    // Matrix_Free(b);
+    // SpMatrix_Free(A);           // 如果你用的是 dense matrix
+    // SpMatrix_Free(G_sp);      // 如果 A 是 sparse matrix，这一行换掉 Matrix_Free(A)
 
-    // cvxopt_free(conelp_ctx);
+    // ECVXConeWorkspace_Free(ecvxcone_ws);
 }
 
 

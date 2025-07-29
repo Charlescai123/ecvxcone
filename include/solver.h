@@ -12,6 +12,13 @@
 extern const char* defaultsolvers[];
 extern char msg[256];
 
+// Static variables for ECVXCONE
+// static matrix *c;
+// static spmatrix *G;
+// static matrix *h;
+// static spmatrix *A;
+// static matrix *b;
+
 typedef struct {
     bool debug;
     double kktreg;
@@ -50,8 +57,8 @@ typedef struct {
     matrix *c; // Objective function coefficients
     matrix *b; // Right-hand side vector for the constraints
     matrix *h; // Right-hand side vector
-    spmatrix *G; // Coefficient matrix for the linear term
-    spmatrix *A; // Coefficient matrix for the constraints
+    void *G; // Coefficient matrix for the linear term
+    void *A; // Coefficient matrix for the constraints
 } ECVXConeData;
 
 static ECVXConeData ecvxcone_data = {
@@ -95,11 +102,8 @@ typedef struct {
 } ECVXConeResult;
 
 typedef struct {
-    // matrix *G; // Coefficient matrix for the linear term
-    // matrix *h; // Right-hand side vector
     DIMs *dims; // Dimensions of the problem
-    // void *A; // Coefficient matrix for the constraints
-    // matrix *b; // Right-hand side vector for the constraints
+
     PrimalStart *primalstart; // Primal start values
     DualStart *dualstart; // Dual start values
     
@@ -116,6 +120,7 @@ typedef struct {
     scaling *W_init; // Scaling structure (identity) for initialization
     scaling *W_nt; // Scaling structure for iterations
 
+    ECVXConeData *data; // Data structure
     ECVXConeResult *result; // Result structure
 } ECVXConeWorkspace;
 
@@ -204,6 +209,74 @@ static inline void ECVXConeResult_Free(ECVXConeResult *result) {
         if (result->z) Matrix_Free(result->z);
         free(result);
     }
+}
+
+static inline void ECVXConeData_Free(ECVXConeData *data) {
+    if (data) {
+        if (data->c) Matrix_Free(data->c);
+        if (data->b) Matrix_Free(data->b);
+        if (data->h) Matrix_Free(data->h);
+
+        if (Matrix_Check(data->G) && !SpMatrix_Check(data->G)) {
+            // G is a dense matrix
+            Matrix_Free(data->G);
+        } else if (SpMatrix_Check(data->G) && !Matrix_Check(data->G)) {
+            // G is a sparse matrix
+            SpMatrix_Free(data->G);
+        }
+
+        if (Matrix_Check(data->A) && !SpMatrix_Check(data->A)) {
+            // A is a dense matrix
+            Matrix_Free(data->A);
+        } else if (SpMatrix_Check(data->A) && !Matrix_Check(data->A)) {
+            // A is a sparse matrix
+            SpMatrix_Free(data->A);
+        }
+
+        // Free the data structure itself
+        free(data);
+    }
+}
+
+static inline void ECVXConeWorkspace_Free(ECVXConeWorkspace *ws) 
+{
+    if (ws) {
+        // if (ws->dims) {
+        //     if (ws->dims->q) free(ws->dims->q);
+        //     if (ws->dims->s) free(ws->dims->s);
+        //     free(ws->dims);
+        // }
+
+        if (ws->primalstart) {
+            if (ws->primalstart->x) Matrix_Free(ws->primalstart->x);
+            if (ws->primalstart->s) Matrix_Free(ws->primalstart->s);
+            free(ws->primalstart);
+        }
+        if (ws->dualstart) {
+            if (ws->dualstart->y) Matrix_Free(ws->dualstart->y);
+            if (ws->dualstart->z) Matrix_Free(ws->dualstart->z);
+            free(ws->dualstart);
+        }
+
+        if(ws->W_init) {
+            Scaling_Free(ws->W_init);
+        }
+        if(ws->W_nt) {
+            Scaling_Free(ws->W_nt);
+        }
+
+        if (ws->data) {
+            ECVXConeData_Free(ws->data);
+        }
+
+        if(ws->result) {
+            ECVXConeResult_Free(ws->result);
+        }
+
+        // Free any allocated resources within the workspace
+        free(ws);
+    }
+    return NULL;
 }
 
 #endif
