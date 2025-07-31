@@ -1,84 +1,125 @@
 #include "cvxopt.h"
-#include "misc.h"
-#include "math.h"
+#include "misc.h"     
 #include "solver.h"
+#include <math.h>
 
-// Python: __all__ = []
-static char* __all__[1] = {NULL}; // Empty list equivalent
+void f6(matrix* x_, matrix* y_, matrix* z_, matrix* tau, matrix* s_, matrix* kappa, 
+        matrix *c, matrix *b, matrix *h, void *G, void *A, DIMs *dims,  scaling *W, 
+        KKTCholContext *kkt_ctx, int cdim_diag, double dg, double dgi, int iters, 
+        int REFINEMENT, int DEBUG);
+
 // const char* defaultsolvers[] = {"ldl", "ldl2", "qr", "chol", "chol2"};
 const char* defaultsolvers[] = {"chol"};
-static const double const_one = 1.0;
-static const double const_zero = 0.0;
+// static const double const_one = 1.0;
+// static const double const_zero = 0.0;
 char msg[256];
 
-void print_W(scaling *W);
+// static KKTCholContext *kkt_ctx = NULL;
+// static scaling *W = NULL;
 
+// Primal and dual variables
+matrix *x = NULL;     // Primal variable (decision variable)
+matrix *y = NULL;     // Dual variable for equality constraints (Lagrange multiplier for Ax = b)
+matrix *s = NULL;     // Slack variable for inequality constraints (s ≥ 0 or s ∈ cone)
+matrix *z = NULL;     // Dual variable for inequality constraints (associated with cone dual K*)
 
-void FreeWorkspaceMatrices1(
-    matrix *dx, matrix *dy, matrix *ds, matrix *dz,
-    matrix *dkappa, matrix *dtau)
-{   
-    // Free all matrices used in the workspace
-    // Primary matrices
-    Matrix_Free(dx);
-    Matrix_Free(dy);
-    Matrix_Free(ds);
-    Matrix_Free(dz);
-    Matrix_Free(dkappa);
-    Matrix_Free(dtau);
-}
+// Newton direction variables (used during each iteration step)
+matrix *dx = NULL;    // Search direction for x
+matrix *dy = NULL;    // Search direction for y
+matrix *ds = NULL;    // Search direction for s
+matrix *dz = NULL;    // Search direction for z
 
-void FreeWorkspaceMatrices2(
-    matrix *rx, matrix *hrx,
-    matrix *ry, matrix *hry,
-    matrix *rz, matrix *hrz,
-    matrix *sigs, matrix *sigz,
-    matrix *lmbda, matrix *lmbdasq,
-    matrix *x1, matrix *y1, matrix *z1, matrix *th,
-    matrix *wx, matrix *wy, matrix *wz, matrix *ws, matrix *wtau, matrix *wkappa,
-    matrix *wx2, matrix *wy2, matrix *wz2, matrix *ws2, matrix *wtau2, matrix *wkappa2,
-    matrix *wz3, matrix *ws3)
+// Extended variables (used in self-dual embedding or infeasibility detection)
+matrix *dkappa = NULL;  // Search direction for κ (helps in feasibility or regularization)
+matrix *dtau = NULL;    // Search direction for τ (scaling or feasibility tracking)
+
+// Intermediate matrices for computations
+static matrix *rx = NULL;
+static matrix *hrx = NULL;
+static matrix *ry = NULL;
+static matrix *hry = NULL;
+static matrix *rz = NULL;
+static matrix *hrz = NULL;
+static matrix *sigs = NULL;
+static matrix *sigz = NULL;
+static matrix *lmbda = NULL;
+static matrix *lmbdasq = NULL;
+
+static matrix *x1 = NULL;
+static matrix *y1_ = NULL;     // y1_ is used to avoid name conflict with y1 in math.h
+static matrix *z1 = NULL;
+static matrix *th = NULL;
+
+static matrix *wx = NULL;
+static matrix *wy = NULL;
+static matrix *wz = NULL;
+static matrix *ws = NULL;
+static matrix *wtau = NULL;
+static matrix *wkappa = NULL;
+
+static matrix *wx2 = NULL;
+static matrix *wy2 = NULL;
+static matrix *wz2 = NULL;
+static matrix *ws2 = NULL;
+static matrix *wtau2 = NULL;
+static matrix *wkappa2 = NULL;
+
+static matrix *wz3 = NULL;
+static matrix *ws3 = NULL;
+
+void init_solver_matrices(matrix *c, matrix *b, int cdim, int cdim_diag, 
+                          int sum_dims_s, int REFINEMENT, int DEBUG) 
 {
-    // Free all matrices used in the workspace
+    // Initialize matrices for the solver
+    x = Matrix_NewFromMatrix(c, c->id);
+    y = Matrix_NewFromMatrix(b, b->id);
+    s = Matrix_New(cdim, 1, DOUBLE);
+    z = Matrix_New(cdim, 1, DOUBLE);
+    dx = Matrix_NewFromMatrix(c, c->id);
+    dy = Matrix_NewFromMatrix(b, b->id);
+    ds = Matrix_New(cdim, 1, DOUBLE);
+    dz = Matrix_New(cdim, 1, DOUBLE);
+    dkappa = Matrix_New(1, 1, DOUBLE);
+    dtau = Matrix_New(1, 1, DOUBLE);
 
-    // Primary
-    Matrix_Free(rx);
-    Matrix_Free(hrx);
-    Matrix_Free(ry);
-    Matrix_Free(hry);
-    Matrix_Free(rz);
-    Matrix_Free(hrz);
-    Matrix_Free(sigs);
-    Matrix_Free(sigz);
-    Matrix_Free(lmbda);
-    Matrix_Free(lmbdasq);
+    // Initialize intermediate matrices
+    rx = Matrix_NewFromMatrix(c, c->id);
+    hrx = Matrix_NewFromMatrix(c, c->id);
+    ry = Matrix_NewFromMatrix(b, b->id);
+    hry = Matrix_NewFromMatrix(b, b->id);
+    rz = Matrix_New(cdim, 1, DOUBLE);
+    hrz = Matrix_New(cdim, 1, DOUBLE);
+    sigs = Matrix_New(sum_dims_s, 1, DOUBLE);
+    sigz = Matrix_New(sum_dims_s, 1, DOUBLE);
+    lmbda = Matrix_New(cdim_diag + 1, 1, DOUBLE);
+    lmbdasq = Matrix_New(cdim_diag + 1, 1, DOUBLE);
 
-    // Optional nullables
-    Matrix_Free(x1);
-    Matrix_Free(y1);
-    Matrix_Free(z1);
-    Matrix_Free(th);
+    wz3 = Matrix_New(cdim, 1, DOUBLE);
+    ws3 = Matrix_New(cdim, 1, DOUBLE);
 
-    // First scaling set
-    Matrix_Free(wx);
-    Matrix_Free(wy);
-    Matrix_Free(wz);
-    Matrix_Free(ws);
-    Matrix_Free(wtau);
-    Matrix_Free(wkappa);
+    x1 = Matrix_NewFromMatrix(c, c->id);
+    y1_ = Matrix_NewFromMatrix(b, b->id);
+    z1 = Matrix_New(cdim, 1, DOUBLE);
+    th = Matrix_New(cdim, 1, DOUBLE);
 
-    // Second scaling set
-    Matrix_Free(wx2);
-    Matrix_Free(wy2);
-    Matrix_Free(wz2);
-    Matrix_Free(ws2);
-    Matrix_Free(wtau2);
-    Matrix_Free(wkappa2);
-
-    // Additional matrices
-    Matrix_Free(wz3);
-    Matrix_Free(ws3);
+    if (REFINEMENT || DEBUG) {
+        wx = Matrix_NewFromMatrix(c, c->id);
+        wy = Matrix_NewFromMatrix(b, b->id);
+        wz = Matrix_New(cdim, 1, DOUBLE);
+        ws = Matrix_New(cdim, 1, DOUBLE);
+        wtau = Matrix_New(1, 1, DOUBLE);
+        wkappa = Matrix_New(1, 1, DOUBLE);
+    }
+    if (REFINEMENT) {
+        wx2 = Matrix_NewFromMatrix(c, c->id);
+        wy2 = Matrix_NewFromMatrix(b, b->id);
+        wz2 = Matrix_New(cdim, 1, DOUBLE);
+        ws2 = Matrix_New(cdim, 1, DOUBLE);
+        wtau2 = Matrix_New(1, 1, DOUBLE);
+        wkappa2 = Matrix_New(1, 1, DOUBLE);
+    }           
 }
+
 
 int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings) 
 {   
@@ -91,7 +132,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     int MAXITERS = settings->maxiters;
     bool SHOW_PROGRESS = settings->show_progress;
     int REFINEMENT = settings->refinement;
-    bool USE_CORRECTION = settings->use_correction;
     int EXPON = settings->EXPON;
     double STEP = settings->STEP;
 
@@ -110,7 +150,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     int sum_dims_s = ecvxcone_ws->sum_dims_s;
 
     // Cone dimensions
-    int cdim = ecvxcone_ws->cdim;
+    // int cdim = ecvxcone_ws->cdim;
     int cdim_pckd = ecvxcone_ws->cdim_pckd;
     int cdim_diag = ecvxcone_ws->cdim_diag;
 
@@ -118,7 +158,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     int *indq = ecvxcone_ws->indq;
 
     // Data for kth 's' constraint are found in rows inds[k]:inds[k+1] of G
-    int *inds = ecvxcone_ws->inds;
+    // int *inds = ecvxcone_ws->inds;
 
     // kktsolver(W) returns a routine for solving 3x3 block KKT system
     //
@@ -127,6 +167,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     //     [ G   0   -W'       ] [ uz ]   [ bz ]
 
     KKTCholContext *kkt_ctx = NULL;
+    scaling *W = NULL;
     if (!KKTREG && (b->nrows > c->nrows || b->nrows + cdim_pckd < c->nrows)) {
         ERR("Error: Rank(A) < p or Rank([G; A]) < n\n");
     }
@@ -152,22 +193,8 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     double alpha = 0.0;
     double beta = 0.0;
 
-    matrix *x = Matrix_NewFromMatrix(c, c->id);
     blas_scal(&alpha, x, -1, 1, 0);
-
-    matrix *y = Matrix_NewFromMatrix(b, b->id);
     blas_scal(&alpha, y, -1, 1, 0);
-
-    matrix *s = Matrix_New(cdim, 1, DOUBLE);
-    matrix *z = Matrix_New(cdim, 1, DOUBLE);
-    matrix *dx = Matrix_NewFromMatrix(c, c->id);
-    matrix *dy = Matrix_NewFromMatrix(b, b->id);
-    matrix *ds = Matrix_New(cdim, 1, DOUBLE);
-    matrix *dz = Matrix_New(cdim, 1, DOUBLE);
-    matrix *dkappa = Matrix_New(1, 1, DOUBLE);
-    matrix *dtau = Matrix_New(1, 1, DOUBLE);
-
-    scaling *W = NULL;
 
     if (primalstart == NULL || dualstart == NULL) {
 
@@ -184,9 +211,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
         
         // Try to get solver function
         factor_function(W, NULL, NULL, kkt_ctx, dims);
-        // if (f == NULL) {
-        //     raise_ValueError("Rank(A) < p or Rank([G; A]) < n");
-        // }
     }
 
     if (primalstart == NULL) {
@@ -207,9 +231,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
 
         // Try to solve
         solve_function(x, dy, s, kkt_ctx, dims);
-        // if (result != 0) {
-            // raise_ValueError("Rank(A) < p or Rank([G; A]) < n");
-        // }
 
         alpha = -1.0;
         blas_scal(&alpha, s, -1, 1, 0);
@@ -309,7 +330,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             }
 
             // rx = A'*y + G'*z + c
-            matrix *rx = Matrix_NewFromMatrix(c, c->id);
+            // rx = Matrix_NewFromMatrix(c, c->id);
             beta = 1.0;
             Af_gemv(y, rx, A, 'T', NULL, &beta);
             Gf_gemv(z, rx, G, dims, 'T', NULL, &beta);
@@ -318,12 +339,12 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             // ry = b - A*x
             alpha = -1.0;
             beta = 1.0;
-            matrix *ry = Matrix_NewFromMatrix(b, b->id);
+            // ry = Matrix_NewFromMatrix(b, b->id);
             Af_gemv(x, ry, A, 'N', &alpha, &beta);
             resy = sqrt(blas_dot(ry, ry, -1, 1, 1, 0, 0).d);
 
             // rz = s + G*x - h
-            matrix *rz = Matrix_New(cdim, 1, DOUBLE);
+            // rz = Matrix_New(cdim, 1, DOUBLE);
             Gf_gemv(x, rz, G, dims, 'N', NULL, NULL);
             number alpha_n;
             alpha_n.d = -1.0;
@@ -342,25 +363,9 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             if (SHOW_PROGRESS) {
                 printf("Optimal solution found.\n");
             }
-
-            Matrix_Free(rx);
-            Matrix_Free(ry);
-            Matrix_Free(rz);
             
             result->x = x;
-            if (DEBUG) {
-                result->s = s;
-                result->y = y;
-                result->z = z;
-            } else {
-                result->s = NULL;
-                result->y = NULL;
-                result->z = NULL;
-                Matrix_Free(s);
-                Matrix_Free(y);
-                Matrix_Free(z);
-            }
-            result->status = "optimal";
+            result->status = OPTIMAL;
             result->gap = gap;
             result->relative_gap = relgap;
             result->primal_objective = cx;
@@ -377,7 +382,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             KKTCholContext_Free(kkt_ctx);
 
             // Free the workspace matrices
-            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
+            // FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
 
             return OPTIMAL;
         }
@@ -473,43 +478,14 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
     double mu;
     double sigma;
     double t;
-    double dinfres;
-    double pinfres;
+    double dinfres = INFINITY;
+    double pinfres = INFINITY;
 
     int pinfres_valid;
     int dinfres_valid;
     int sol_status;
 
     number step;
-
-    matrix *rx = Matrix_NewFromMatrix(c, c->id);
-    matrix *hrx = Matrix_NewFromMatrix(c, c->id);
-    matrix *ry = Matrix_NewFromMatrix(b, b->id);
-    matrix *hry = Matrix_NewFromMatrix(b, b->id);
-    matrix *rz = Matrix_New(cdim, 1, DOUBLE);
-    matrix *hrz = Matrix_New(cdim, 1, DOUBLE);
-    matrix *sigs = Matrix_New(sum_dims_s, 1, DOUBLE);
-    matrix *sigz = Matrix_New(sum_dims_s, 1, DOUBLE);
-    matrix *lmbda = Matrix_New(cdim_diag + 1, 1, DOUBLE);
-    matrix *lmbdasq = Matrix_New(cdim_diag + 1, 1, DOUBLE);
-    matrix *x1 = NULL, *y1 = NULL, *z1 = NULL, *th = NULL;
-
-    matrix *wx = NULL;
-    matrix *wy = NULL;
-    matrix *wz = NULL;
-    matrix *ws = NULL;
-    matrix *wtau = NULL;
-    matrix *wkappa = NULL;
-
-    matrix *wx2 = NULL;
-    matrix *wy2 = NULL;
-    matrix *wz2 = NULL;
-    matrix *ws2 = NULL;
-    matrix *wtau2 = NULL;
-    matrix *wkappa2 = NULL;
-
-    matrix *wz3 = Matrix_New(cdim, 1, DOUBLE);
-    matrix *ws3 = Matrix_New(cdim, 1, DOUBLE);
 
     gap = misc_sdot(s, z, dims, 0);
 
@@ -628,29 +604,18 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
                 if (SHOW_PROGRESS) {
                     printf("Terminated (maximum number of iterations reached).\n");
                 }
-                result->status = "unknown";
+                result->status = UNKNOWN;
                 sol_status = UNKNOWN;
             } else {
                 if (SHOW_PROGRESS) {
                     printf("Optimal solution found.\n");
                 }
-                result->status = "optimal";
+                result->status = OPTIMAL;
                 sol_status = OPTIMAL;
             }
 
             result->x = x;
-            if (DEBUG) {
-                result->s = s;
-                result->y = y;
-                result->z = z;
-            } else {
-                result->s = NULL; 
-                result->y = NULL;
-                result->z = NULL;
-                Matrix_Free(s);
-                Matrix_Free(y);
-                Matrix_Free(z);
-            }
+            result->status = sol_status;
             result->gap = gap;
             result->relative_gap = relgap_valid ? relgap : 0.0;
             result->primal_objective = pcost;
@@ -666,16 +631,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             if (iters > 0) {
                 Scaling_Free(W);
             }
-
-            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
-            FreeWorkspaceMatrices2(
-                rx, hrx, ry, hry, rz, hrz,
-                sigs, sigz, lmbda, lmbdasq,
-                x1, y1, z1, th,
-                wx, wy, wz, ws, wtau, wkappa,
-                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
-            );
-
             KKTCholContext_Free(kkt_ctx);
             return sol_status;
         }
@@ -696,20 +651,10 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             if (SHOW_PROGRESS) {
                 printf("Certificate of primal infeasibility found.\n");
             }
-            
-            if (DEBUG) {
-                result->y = y;
-                result->z = z;
-            } else {
-                result->y = NULL;
-                result->z = NULL;
-                Matrix_Free(y);
-                Matrix_Free(z);
-            }
 
             result->x = NULL;
             result->s = NULL;
-            result->status = "primal infeasible";
+            result->status = PRIMAL_INFEASIBLE;
             result->gap = 0.0;
             result->relative_gap = 0.0;
             result->primal_objective = 0.0;
@@ -722,20 +667,9 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             result->residual_as_dual_infeasibility_certificate = 0.0;
             result->iterations = iters;
 
-            if( iters > 0) {
+            if (iters > 0) {
                 Scaling_Free(W);
             }
-
-            Matrix_Free(x);
-            Matrix_Free(s);
-            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
-            FreeWorkspaceMatrices2(
-                rx, hrx, ry, hry, rz, hrz,
-                sigs, sigz, lmbda, lmbdasq,
-                x1, y1, z1, th,
-                wx, wy, wz, ws, wtau, wkappa,
-                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
-            );
 
             KKTCholContext_Free(kkt_ctx);
             return PRIMAL_INFEASIBLE;
@@ -769,7 +703,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             result->x = x;
             result->y = NULL;
             result->z = NULL;
-            result->status = "dual infeasible";
+            result->status = DUAL_INFEASIBLE;
             result->gap = 0.0;
             result->relative_gap = 0.0;
             result->primal_objective = -1.0;
@@ -785,18 +719,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             if (iters > 0) {
                 Scaling_Free(W);
             }
-            
-            Matrix_Free(y); 
-            Matrix_Free(z);
-
-            FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
-            FreeWorkspaceMatrices2(
-                rx, hrx, ry, hry, rz, hrz,
-                sigs, sigz, lmbda, lmbdasq,
-                x1, y1, z1, th,
-                wx, wy, wz, ws, wtau, wkappa,
-                wx2, wy2, wz2, ws2, wtau2, wkappa2, wz3, ws3
-            );
 
             KKTCholContext_Free(kkt_ctx);
             return DUAL_INFEASIBLE;
@@ -844,22 +766,16 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
 
         factor_function(W, NULL, NULL, kkt_ctx, dims);
 
-        if (iters == 0) {
-            x1 = Matrix_NewFromMatrix(c, c->id);
-            y1 = Matrix_NewFromMatrix(b, b->id);
-            z1 = Matrix_New(cdim, 1, DOUBLE);
-        }
-
         alpha = -1.0;
         xy_copy(c, x1);
         blas_scal(&alpha, x1, -1, 1, 0);
-        xy_copy(b, y1);
+        xy_copy(b, y1_);
         blas_copy(h, z1, -1, 1, 1, 0, 0);
 
-        solve_function(x1, y1, z1, kkt_ctx, dims);
+        solve_function(x1, y1_, z1, kkt_ctx, dims);
 
         blas_scal(&dgi, x1, -1, 1, 0);
-        blas_scal(&dgi, y1, -1, 1, 0);
+        blas_scal(&dgi, y1_, -1, 1, 0);
         blas_scal(&dgi, z1, -1, 1, 0);
         
         // if (iters == 0 && primalstart && dualstart) {
@@ -890,7 +806,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
         //     result->y = y;
         //     result->s = s;
         //     result->z = z;
-        //     result->status = "unknown";
+        //     result->status = UNKNOWN;
         //     result->gap = gap;
         //     result->relative_gap = relgap_valid ? relgap : 0.0;
         //     result->primal_objective = pcost;
@@ -911,29 +827,10 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
         
         // th = W^{-T} * h
         if (iters == 0) {
-            th = Matrix_New(cdim, 1, DOUBLE);
+            // th = Matrix_New(cdim, 1, DOUBLE);
         }
         blas_copy(h, th, -1, 1, 1, 0, 0);
         misc_scale(th, W, 'T', 'I');
-        
-        if (iters == 0) {
-            if (REFINEMENT || DEBUG) {
-                wx = Matrix_NewFromMatrix(c, c->id);
-                wy = Matrix_NewFromMatrix(b, b->id);
-                wz = Matrix_New(cdim, 1, DOUBLE);
-                ws = Matrix_New(cdim, 1, DOUBLE);
-                wtau = Matrix_New(1, 1, DOUBLE);
-                wkappa = Matrix_New(1, 1, DOUBLE);
-            }
-            if (REFINEMENT) {
-                wx2 = Matrix_NewFromMatrix(c, c->id);
-                wy2 = Matrix_NewFromMatrix(b, b->id);
-                wz2 = Matrix_New(cdim, 1, DOUBLE);
-                ws2 = Matrix_New(cdim, 1, DOUBLE);
-                wtau2 = Matrix_New(1, 1, DOUBLE);
-                wkappa2 = Matrix_New(1, 1, DOUBLE);
-            }
-        }
 
         mu = pow(blas_nrm2(lmbda, -1, 1, 0), 2) / (1 + cdim_diag);
         sigma = 0.0;
@@ -1007,9 +904,8 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             blas_scal(&alpha, dz, -1, 1, 0);
             MAT_BUFD(dtau)[0] = (1.0 - sigma) * rt;
             
-            f6(dx, dy, dz, dtau, ds, dkappa, REFINEMENT, DEBUG, c, b, th, lmbda, cdim_diag,
-                dg, dims, W, kkt_ctx, x1, y1, z1, ws3, wz3, h, A, G, wx, wy, wz, ws, wtau, wkappa,
-                wx2, wy2, wz2, ws2, wtau2, wkappa2, dgi, iters);
+            f6(dx, dy, dz, dtau, ds, dkappa, c, b, h, G, A, dims, 
+                W, kkt_ctx, cdim_diag, dg, dgi, iters, REFINEMENT, DEBUG);
                 
             // Save ds o dz and dkappa * dtau for Mehrotra correction
             if (i == 0) {
@@ -1045,12 +941,12 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
                 if (i == 0) {
                     step.d = fmin(1.0, 1.0 / t);
                 } else {
-                    step.d = fmin(1.0, settings->STEP / t);
+                    step.d = fmin(1.0, STEP / t);
                 }
             }
             
             if (i == 0) {
-                sigma = pow(1.0 - step.d, settings->EXPON);
+                sigma = pow(1.0 - step.d, EXPON);
             }
         }
      
@@ -1172,12 +1068,11 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
 
         gap = pow(blas_nrm2(lmbda, lmbda->nrows - 1, 1, 0) / tau, 2.0);
     }
-
 }
 
-void Gf_gemv(matrix *x, matrix *y, void *G, DIMs *dims, char trans, void* alpha, void* beta) 
+void Gf_gemv(matrix *x_, matrix *y_, void *G, DIMs *dims, char trans, void* alpha, void* beta) 
 {
-    if (!x || !y || !G)  ERR("Error: Gf_gemv requires non-null x, y, and G matrices\n");
+    if (!x_ || !y_ || !G)  ERR("Error: Gf_gemv requires non-null x, y, and G matrices\n");
 
     double one_ = 1.0;
     double zero_ = 0.0;
@@ -1189,11 +1084,11 @@ void Gf_gemv(matrix *x, matrix *y, void *G, DIMs *dims, char trans, void* alpha,
     }
     if (trans == 0) trans = 'N'; // Default transposition to 'N'
 
-    misc_sgemv(G, x, y, dims, trans, *(double*)alpha, *(double*)beta, -1, 0, 0, 0);
+    misc_sgemv(G, x_, y_, dims, trans, *(double*)alpha, *(double*)beta, -1, 0, 0, 0);
 }
 
-void Af_gemv(matrix *x, matrix *y, void *A, char trans, void* alpha, void* beta) {
-    if (!x || !y || !A)  ERR("Error: Af_gemv requires non-null x, y, and A matrices\n");
+void Af_gemv(matrix *x_, matrix *y_, void *A, char trans, void* alpha, void* beta) {
+    if (!x_ || !y_ || !A)  ERR("Error: Af_gemv requires non-null x, y, and A matrices\n");
 
     if (alpha == NULL) {
         double one = 1.0;
@@ -1205,7 +1100,7 @@ void Af_gemv(matrix *x, matrix *y, void *A, char trans, void* alpha, void* beta)
     }
     if (trans == 0) trans = 'N'; // Default transposition to 'N'
 
-    base_gemv(A, x, y, trans, alpha, beta, -1, -1, 1, 1, 0, 0, 0);
+    base_gemv(A, x_, y_, trans, alpha, beta, -1, -1, 1, 1, 0, 0, 0);
 }
 
 
@@ -1220,9 +1115,8 @@ void Af_gemv(matrix *x, matrix *y, void *A, char trans, void* alpha, void* beta)
 //       vkappa += lmbdg * (dtau + dkappa).
 void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *ukappa, 
          matrix *vx, matrix *vy, matrix *vz, matrix *vtau, matrix *vs, matrix *vkappa, 
-         scaling *W, double dg, matrix *lmbda, void* A, void* G, DIMs *dims, int cdim_diag, 
-         matrix *ws3, matrix *wz3, matrix *c, matrix *b, matrix *h) {
-
+         matrix *c, matrix *b, matrix *h, void* G, void* A, DIMs *dims, scaling *W, 
+         double dg, int cdim_diag){
 
     double alpha = -1.0;
     double beta = 1.0;
@@ -1275,9 +1169,8 @@ void xy_copy(matrix *x, matrix *y)
 
 
 // f6_no_ir function definition
-void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, matrix* lmbda, 
-              matrix *c, matrix *b, matrix *th, matrix *x1, matrix *y1, matrix *z1, matrix *ws3, 
-              DIMs *dims, scaling *W, int cdim_diag, double dgi, KKTCholContext *kkt_ctx)
+void f6_no_ir(matrix* x_, matrix* y_, matrix* z_, matrix* tau, matrix* s_, matrix* kappa, matrix *c, 
+              matrix *b, DIMs *dims, scaling *W, KKTCholContext *kkt_ctx, int cdim_diag, double dgi)
 {
     // Solve
     //
@@ -1303,20 +1196,20 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     
     // y := -y = -by
     double alpha = -1.0;
-    blas_scal(&alpha, y, -1, 1, 0);
+    blas_scal(&alpha, y_, -1, 1, 0);
     
     // s := -lmbda o\ s = -lmbda o\ bs
-    misc_sinv(s, lmbda, dims, 0);
-    blas_scal(&alpha, s, -1, 1, 0);
+    misc_sinv(s_, lmbda, dims, 0);
+    blas_scal(&alpha, s_, -1, 1, 0);
 
     // z := -(z + W'*s) = -bz + W'*(lambda o\ bs)
-    blas_copy(s, ws3, -1, 1, 1, 0, 0);
+    blas_copy(s_, ws3, -1, 1, 1, 0, 0);
     misc_scale(ws3, W, 'T', 'N');
-    blas_axpy(ws3, z, NULL, -1, 1, 1, 0, 0);
-    blas_scal(&alpha, z, -1, 1, 0);
+    blas_axpy(ws3, z_, NULL, -1, 1, 1, 0, 0);
+    blas_scal(&alpha, z_, -1, 1, 0);
 
-    solve_function(x, y, z, kkt_ctx, dims);
-    
+    solve_function(x_, y_, z_, kkt_ctx, dims);
+
     // Combine with solution of
     //
     // [ 0   A'  G'    ] [ x1         ]          [ c ]
@@ -1333,45 +1226,42 @@ void f6_no_ir(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* k
     // tau[0] = tau[0] + kappa[0] / dgi = btau[0] - bkappa / tau
     MAT_BUFD(tau)[0] += MAT_BUFD(kappa)[0] / dgi;
     MAT_BUFD(tau)[0] = dgi * (MAT_BUFD(tau)[0] + 
-            blas_dot(c, x, -1, 1, 1, 0, 0).d + blas_dot(b, y, -1, 1, 1, 0, 0).d + 
-            misc_sdot(th, z, dims, 0)) / (1.0 + misc_sdot(z1, z1, dims, 0));
-    
+            blas_dot(c, x_, -1, 1, 1, 0, 0).d + blas_dot(b, y_, -1, 1, 1, 0, 0).d + 
+            misc_sdot(th, z_, dims, 0)) / (1.0 + misc_sdot(z1, z1, dims, 0));
+
     number alpha_n;
     alpha_n.d = MAT_BUFD(tau)[0];
-    
-    blas_axpy(x1, x, &alpha_n, -1, 1, 1, 0, 0);
-    blas_axpy(y1, y, &alpha_n, -1, 1, 1, 0, 0);
-    blas_axpy(z1, z, &alpha_n, -1, 1, 1, 0, 0);
+
+    blas_axpy(x1, x_, &alpha_n, -1, 1, 1, 0, 0);
+    blas_axpy(y1_, y_, &alpha_n, -1, 1, 1, 0, 0);
+    blas_axpy(z1, z_, &alpha_n, -1, 1, 1, 0, 0);
 
     // s := s - z = - lambda o\ bs - z
     alpha_n.d = -1.0;
-    blas_axpy(z, s, &alpha_n, -1, 1, 1, 0, 0);
+    blas_axpy(z_, s_, &alpha_n, -1, 1, 1, 0, 0);
 
     MAT_BUFD(kappa)[0] -= MAT_BUFD(tau)[0];
 }
 
 
 // f6 function definition
-void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, int refinement, 
-        int DEBUG, matrix *c, matrix *b, matrix *th, matrix *lmbda, int cdim_diag, double dg, DIMs *dims,
-        scaling *W, KKTCholContext *kkt_ctx, matrix *x1, matrix *y1, matrix *z1, 
-        matrix *ws3, matrix *wz3, matrix *h, void *A, void *G, matrix *wx, matrix *wy, matrix *wz,
-        matrix *ws, matrix *wtau, matrix *wkappa, matrix *wx2, matrix *wy2, matrix *wz2, matrix *ws2, 
-        matrix *wtau2, matrix *wkappa2, double dgi, int iters) 
+void f6(matrix* x_, matrix* y_, matrix* z_, matrix* tau, matrix* s_, matrix* kappa, 
+        matrix *c, matrix *b, matrix *h, void *G, void *A, DIMs *dims, scaling *W, 
+        KKTCholContext *kkt_ctx, int cdim_diag, double dg, double dgi, int iters, 
+        int REFINEMENT, int DEBUG) 
     {
-    if (refinement || DEBUG) {
-        xy_copy(x, wx);
-        xy_copy(y, wy);
-        blas_copy(z, wz, -1, 1, 1, 0, 0);
+    if (REFINEMENT || DEBUG) {
+        xy_copy(x_, wx);
+        xy_copy(y_, wy);
+        blas_copy(z_, wz, -1, 1, 1, 0, 0);
         MAT_BUFD(wtau)[0] = MAT_BUFD(tau)[0];
-        blas_copy(s, ws, -1, 1, 1, 0, 0);
+        blas_copy(s_, ws, -1, 1, 1, 0, 0);
         MAT_BUFD(wkappa)[0] = MAT_BUFD(kappa)[0];
     }
 
-    f6_no_ir(x, y, z, tau, s, kappa, lmbda, c, b, th, x1, y1, z1, 
-            ws3, dims, W, cdim_diag, dgi, kkt_ctx);
+    f6_no_ir(x_, y_, z_, tau, s_, kappa, c, b, dims, W, kkt_ctx, cdim_diag, dgi);
 
-    for (int i = 0; i < refinement; ++i) {
+    for (int i = 0; i < REFINEMENT; ++i) {
         xy_copy(wx, wx2);
         xy_copy(wy, wy2);
         blas_copy(wz, wz2, -1, 1, 1, 0, 0);
@@ -1379,24 +1269,22 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         blas_copy(ws, ws2, -1, 1, 1, 0, 0);
         MAT_BUFD(wkappa2)[0] = MAT_BUFD(wkappa)[0];
 
-        res(x, y, z, tau, s, kappa, wx2, wy2, wz2, wtau2, ws2, wkappa2, W, dg, lmbda, 
-            A, G, dims, cdim_diag, ws3, wz3, c, b, h
-        );
+        res(x_, y_, z_, tau, s_, kappa, wx2, wy2, wz2, wtau2, ws2, wkappa2, 
+            c, b, h, G, A, dims, W, dg, cdim_diag);
 
-        f6_no_ir(wx2, wy2, wz2, wtau2, ws2, wkappa2, lmbda, c, b, th, x1, y1, z1,
-             ws3, dims, W, cdim_diag, dgi, kkt_ctx);
-        
-        blas_axpy(wx2, x, NULL, -1, 1, 1, 0, 0);
-        blas_axpy(wy2, y, NULL, -1, 1, 1, 0, 0);
-        blas_axpy(wz2, z, NULL, -1, 1, 1, 0, 0);
+        f6_no_ir(wx2, wy2, wz2, wtau2, ws2, wkappa2, c, b, dims, W, kkt_ctx, cdim_diag, dgi);
+
+        blas_axpy(wx2, x_, NULL, -1, 1, 1, 0, 0);
+        blas_axpy(wy2, y_, NULL, -1, 1, 1, 0, 0);
+        blas_axpy(wz2, z_, NULL, -1, 1, 1, 0, 0);
         MAT_BUFD(tau)[0] += MAT_BUFD(wtau2)[0];
-        blas_axpy(ws2, s, NULL, -1, 1, 1, 0, 0);
+        blas_axpy(ws2, s_, NULL, -1, 1, 1, 0, 0);
         MAT_BUFD(kappa)[0] += MAT_BUFD(wkappa2)[0];
     }
     
     if (DEBUG) {
-        res(x, y, z, tau, s, kappa, wx, wy, wz, wtau, ws, wkappa, W, dg, lmbda,
-            A, G, dims, cdim_diag, ws3, wz3, c, b, h);
+        res(x_, y_, z_, tau, s_, kappa, wx, wy, wz, wtau, ws, wkappa, 
+            c, b, h, G, A, dims, W, dg, cdim_diag);
     
         printf("KKT residuals\n");
         printf("    'x': %e\n", sqrt(blas_dot(wx, wx, -1, 1, 1, 0, 0).d));
@@ -1407,6 +1295,3 @@ void f6(matrix* x, matrix* y, matrix* z, matrix* tau, matrix* s, matrix* kappa, 
         printf("    'kappa': %e\n", fabs(MAT_BUFD(wkappa)[0]));
     }
 }
-
-
-

@@ -1,9 +1,11 @@
 #include "cvxopt.h"
 #include "solver.h"
 #include "misc.h"
+#include "blas.h"
 
-extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans, void* alpha, void* beta, 
-            int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
+void debug_matrix_by_project2vector(matrix *m);
+void print_matrix_(matrix *m);
+void print_scaling(scaling *W);
 
 /**
  * Debugging function to print a matrix by projecting it onto a vector of ones.
@@ -54,7 +56,7 @@ void print_matrix_(matrix *m)
  *
  * @param W Pointer to the scaling structure to be printed.
  */
-void print_W(scaling *W) 
+void print_scaling(scaling *W) 
 {
     for(int i = 0; i < W->r_count; ++i) {
         printf("W[%d]:\n", i);

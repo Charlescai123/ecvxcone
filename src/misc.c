@@ -19,86 +19,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "base.h"
+#include "blas.h"
+#include "lapack.h"
 #include "solver.h"
 #include "cvxopt.h"
 #include "misc.h"
 #include "float.h"
 #include <unistd.h>
 
-/* misc_solver prototype */
-extern void dcopy_(int *n, double *x, int *incx, double *y, int *incy);
-extern double dnrm2_(int *n, double *x, int *incx);
-extern double ddot_(int *n, double *x, int *incx, double *y, int *incy);
-extern void dscal_(int *n, double *alpha, double *x, int *incx);
-extern void daxpy_(int *n, double *alpha, double *x, int *incx, double *y,
-    int *incy);
-extern void dtbmv_(char *uplo, char *trans, char *diag, int *n, int *k,
-    double *A, int *lda, double *x, int *incx);
-extern void dtbsv_(char *uplo, char *trans, char *diag, int *n, int *k,
-    double *A, int *lda, double *x, int *incx);
-extern void dgemv_(char* trans, int *m, int *n, double *alpha, double *A,
-    int *lda, double *x, int *incx, double *beta, double *y, int *incy);
-extern void dger_(int *m, int *n, double *alpha, double *x, int *incx,
-    double *y, int *incy, double *A, int *lda);
-extern void dtrmm_(char *side, char *uplo, char *transa, char *diag,
-    int *m, int *n, double *alpha, double *A, int *lda, double *B,
-    int *ldb);
-extern void dsyr2k_(char *uplo, char *trans, int *n, int *k, double *alpha,
-    double *A, int *lda, double *B, int *ldb, double *beta, double *C,
-    int *ldc);
-extern void dlacpy_(char *uplo, int *m, int *n, double *A, int *lda,
-    double *B, int *ldb);
-extern void dsyevr_(char *jobz, char *range, char *uplo, int *n, double *A,
-    int *ldA, double *vl, double *vu, int *il, int *iu, double *abstol,
-    int *m, double *W, double *Z, int *ldZ, int *isuppz, double *work,
-    int *lwork, int *iwork, int *liwork, int *info);
-extern void dsyevd_(char *jobz, char *uplo, int *n, double *A, int *ldA,
-    double *W, double *work, int *lwork, int *iwork, int *liwork, int *info);
-extern void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
-                int n, int nrhs, int ldA, int ldB, int oA, int oB);
-
-/* blas library */
-extern void blas_tbsv(matrix *A, matrix *x, char uplo, char trans, char diag, 
-    int n, int k, int ldA, int incx, int offsetA, int offsetx);
-extern number blas_dot(matrix *x, matrix *y, int n, int incx, int incy, 
-    int offsetx, int offsety);
-extern double blas_nrm2(matrix *x, int n, int inc, int offset);
-extern void blas_scal(void* alpha, matrix* x, int n, int inc, int offset);
-extern void blas_copy(matrix *x, matrix *y, int n, int ix, int iy, int ox, int oy);
-extern void blas_axpy(matrix *x, matrix *y, number *alpha, int n, int incx, 
-    int incy, int offsetx, int offsety);
-extern void blas_tbmv(matrix *A, matrix *x, char uplo, char trans, char diag, 
-    int n, int k, int ldA, int incx, int offsetA, int offsetx);
-extern void blas_trmm(matrix *A, matrix *B, char side, char uplo, char transA, char diag,
-               void* alpha, int m, int n, int ldA, int ldB, int offsetA, int offsetB);
-extern void blas_trsm(matrix *A, matrix *B, char side, char uplo, char transA, char diag,
-          void* alpha, int m, int n, int ldA, int ldB, int offsetA, int offsetB);
-extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB, 
-              void* alpha, void* beta, int m, int n, int k, int ldA, int ldB, 
-              int ldC, int offsetA, int offsetB, int offsetC);
-extern void blas_syrk(matrix *A, matrix *C, char uplo, char trans, void* alpha, void* beta, 
-              int n, int k, int ldA, int ldC, int offsetA, int offsetC);
-extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans, void* alpha, void* beta, 
-            int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
-
-/* base library */
-extern void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
-extern void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id);
-extern void* base_pow(void* A, void* exponent, int A_type, int A_id, int exp_id);
-extern void* base_sqrt(void* A, int A_type, int A_id);
-extern void base_gemv(void *A, matrix *x, matrix *y, char trans, void *alpha, void *beta, 
-                    int m, int n, int incx, int incy, int offsetA, int offsetx, int offsety);
-
 extern matrix * Matrix_New(int, int, int);
-
-/* lapack library */
-extern void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix *Vt, int m, 
-    int n, int ldA, int ldU, int ldVt, int offsetA, int offsetS, int offsetU, int offsetVt);
-extern void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA);
-extern void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA);
-extern void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char trans, 
-                int m, int n, int k, int ldA, int ldC, int offsetA, int offsetC);
-extern void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, int oA, int oB);
 
 /* sparse library */
 extern ccs * transpose(ccs *A, int conjugate);

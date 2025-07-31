@@ -133,12 +133,6 @@ spmatrix * spmatrix_trans(spmatrix *A);
 // Function pointer for converting numbers
 extern void (*write_num[])(void *, int, void *, int);
 
-// static inline int is_number(void *ptr) {
-//     if (!ptr) return 0;
-//     number *n = (number *)ptr;
-//     return (n->id == INT || n->id == DOUBLE || n->id == COMPLEX);
-// }
-
 // Scaling initialization function
 static inline void Scaling_Init(scaling *W) {
     if (!W) err_no_memory;

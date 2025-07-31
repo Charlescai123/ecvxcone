@@ -281,4 +281,41 @@ extern void zgges_(char *jobvsl, char *jobvsr, char *sort, int (*delctg)(complex
     complex_t *work, int *lwork, double *rwork, int *bwork, 
     int *info);
 
+/***********************************************************************/
+/****                                                               ****/
+/****                      LAPACK functions                         ****/
+/****                                                               ****/
+/***********************************************************************/
+
+void lapack_getrf(matrix *A, matrix *ipiv, int m, int n, int ldA, int offsetA);
+void lapack_getrs(matrix *A, matrix *ipiv, matrix *B, char trans, int n, int nrhs, 
+                  int ldA, int ldB, int offsetA, int offsetB);
+void lapack_getri(matrix *A, matrix *ipiv, int n, int ldA, int offsetA);
+void lapack_gesv(matrix *A, matrix *B, matrix *ipiv, int n, int nrhs, int ldA, 
+                 int ldB, int offsetA, int offsetB);
+void lapack_gbtrf(matrix *A, int m, int kl, matrix *ipiv, int n, int ku, int ldA, int offsetA);
+void lapack_gbtrs(matrix *A, int kl, matrix *ipiv, matrix *B, char trans, int n, 
+                  int ku, int nrhs, int ldA, int ldB, int offsetA, int offsetB);
+void lapack_gbsv(matrix *A, int kl, matrix *B, matrix *ipiv, int ku, int n, 
+                 int nrhs, int ldA, int ldB, int offsetA, int offsetB);
+void lapack_gttrf(matrix *dl, matrix *d, matrix *du, matrix *du2, matrix *ipiv, 
+                 int n, int offsetdl, int offsetd, int offsetdu);
+void lapack_gttrs(matrix *dl, matrix *d, matrix *du, matrix *du2, matrix *ipiv, matrix *B, char trans, 
+                  int n, int nrhs, int ldB, int offsetdl, int offsetd, int offsetdu, int offsetB);
+void lapack_gtsv(matrix *dl, matrix *d, matrix *du, matrix *B, int n, int nrhs, 
+                int ldB, int offsetdl, int offsetd, int offsetdu, int offsetB);
+void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA);
+void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, 
+                  int offsetA, int offsetB);
+void lapack_potri(matrix* A, char uplo, int n, int ldA, int offsetA);
+void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
+                int n, int nrhs, int ldA, int ldB, int offsetA, int offsetB);
+void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA);
+void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char trans, int m, 
+                int n, int k, int ldA, int ldC, int offsetA, int offsetC);
+void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix *Vt, int m, int n, 
+                int ldA, int ldU, int ldVt, int offsetA, int offsetS, int offsetU, int offsetVt);
+
+
+
 #endif

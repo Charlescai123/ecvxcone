@@ -2,9 +2,9 @@ from cvxopt import matrix, misc
 import numpy as np
 import time
 
-s_input = "../c/input_matrix/s.npy"
-z_input = "../c/input_matrix/z.npy"
-lmbda_input = "../c/input_matrix/lmbda.npy"
+s_input = "../dummy_input/s.npy"
+z_input = "../dummy_input/z.npy"
+lmbda_input = "../dummy_input/lmbda.npy"
 
 N = int(1e3)  # Number of iterations for performance testing
 np.set_printoptions(suppress=True)
@@ -36,27 +36,27 @@ def test_misc_unpack():
 
 
 def test_misc_symm():
-    # 初始化下三角矩阵（列主序）
-    # 目标：对称化填充上三角
-    # C 中的顺序是 column-major: [A(0,0), A(1,0), A(2,0), A(0,1), A(1,1), A(2,1), A(0,2), A(1,2), A(2,2)]
+    
+    # Initialize lower triangular matrix (column-major)
+    # Goal: Symmetrize by filling upper triangular
     buf = [
         1.0, 2.0, 4.0,  # column 0
-        0.0, 3.0, 5.0,  # column 1 （上三角 0.0 是 placeholder，将被填）
+        0.0, 3.0, 5.0,  # column 1 
         0.0, 0.0, 6.0   # column 2
     ]
     A = matrix(buf, (3, 3), 'd')  # 列主序
 
-    # 调用 cvxopt.misc.symm：将下三角填充到上三角
+    # Call cvxopt.misc.symm: place upper triangular with lower
+    # Note: modifies A in-place
     misc.symm(A, 3)
     
     t1 = time.time()
-    # 执行 SVD: A = U * diag(s) * Vt
+    # SVD: A = U * diag(s) * Vt
     for i in range(N):
         misc.symm(A, 3)
     t2 = time.time()
     print(f"Time taken: {t2 - t1:.6f} seconds")
 
-    # 打印对称矩阵
     print("Symmetric matrix A after misc.symm:")
     for i in range(3):
         for j in range(3):

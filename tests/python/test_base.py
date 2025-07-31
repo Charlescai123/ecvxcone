@@ -18,8 +18,6 @@ def test_base_syrk():
         B = base.syrk(A, C, alpha=2.0, beta=1.0)
     t2 = time.time()
     print(f"Time taken: {t2 - t1:.6f} seconds")
-    
-    # print(f"C is: {C}")
 
 
 def test_base_emul():

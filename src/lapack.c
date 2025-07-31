@@ -1,1139 +1,1041 @@
+/*
+ * Copyright 2012-2023 M. Andersen and L. Vandenberghe.
+ * Copyright 2010-2011 L. Vandenberghe.
+ * Copyright 2004-2009 J. Dahl and L. Vandenberghe.
+ *
+ * This file is part of CVXOPT.
+ *
+ * CVXOPT is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * CVXOPT is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "lapack.h"
 
-
-// static int number_from_pyobject(PyObject *o, number *a, int id)
-// {
-//     switch (id){
-//         case DOUBLE:
-// #if PY_MAJOR_VERSION >= 3
-//             if (!PyLong_Check(o) && !PyLong_Check(o) &&
-//                 !PyFloat_Check(o)) return -1;
-// #else
-//             if (!PyInt_Check(o) && !PyLong_Check(o) &&
-//                 !PyFloat_Check(o)) return -1;
-// #endif
-//             (*a).d = PyFloat_AsDouble(o);
-//             return 0;
-
-//         case COMPLEX:
-// #if PY_MAJOR_VERSION >= 3
-//             if (!PyLong_Check(o) && !PyLong_Check(o) &&
-//                 !PyFloat_Check(o) && !PyComplex_Check(o)) return -1;
-// #else
-//             if (!PyInt_Check(o) && !PyLong_Check(o) &&
-//                 !PyFloat_Check(o) && !PyComplex_Check(o)) return -1;
-// #endif
-// #ifndef _MSC_VER
-//             (*a).z = PyComplex_RealAsDouble(o) +
-//                 I*PyComplex_ImagAsDouble(o);
-// #else
-//             (*a).z = _Cbuild(PyComplex_RealAsDouble(o),PyComplex_ImagAsDouble(o));
-// #endif
-//             return 0;
-//     }
-//     return -1;
-// }
-
-
-// static char doc_getrf[] =
-//     "LU factorization of a general real or complex m by n matrix.\n\n"
-//     "getrf(A, ipiv, m=A.size[0], n=A.size[1], ldA=max(1,A.size[0]),\n"
-//     "      offsetA=0)\n\n"
-//     "PURPOSE\n"
-//     "On exit, A is replaced with L, U in the factorization P*A = L*U\n"
-//     "and ipiv contains the permutation:\n"
-//     "P = P_min{m,n} * ... * P2 * P1 where Pi interchanges rows i and\n"
-//     "ipiv[i] of A (using the Fortran convention, i.e., the first row\n"
-//     "is numbered 1).\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "ipiv      'i' matrix of length at least min(m,n)\n\n"
-//     "m         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,m).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer";
-
-// static PyObject* getrf(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *ipiv;
-//     int m=-1, n=-1, ldA=0, oA=0, info;
-//     char *kwlist[] = {"A", "ipiv", "m", "n", "ldA", "offsetA", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|iiii", kwlist,
-//         &A, &ipiv, &m, &n, &ldA, &oA)) return NULL;
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(ipiv) || ipiv ->id != INT) err_int_mtrx("ipiv");
-//     if (m < 0) m = A->nrows;
-//     if (n < 0) n = A->ncols;
-//     if (m == 0 || n == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,m)) err_ld("ldA");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + m > len(A)) err_buf_len("A");
-//     if (len(ipiv) < MIN(n,m)) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(MIN(m,n)*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(A)) {
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dgetrf_(&m, &n, MAT_BUFD(A)+oA, &ldA, ipiv_ptr, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgetrf_(&m, &n, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int i;  for (i=0; i<MIN(m,n); i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
-//     free(ipiv_ptr);
-// #endif
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_getrs[] =
-//     "Solves a general real or complex set of linear equations,\n"
-//     "given the LU factorization computed by getrf() or gesv().\n\n"
-//     "getrs(A, ipiv, B, trans='N', n=A.size[0], nrhs=B.size[1],\n"
-//     "      ldA = max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0,\n"
-//     "      offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "If trans is 'N', solves A*X = B.\n"
-//     "If trans is 'T', solves A^T*X = B.\n"
-//     "If trans is 'C', solves A^H*X = B.\n"
-//     "On entry, A and ipiv contain the LU factorization of an n by n\n"
-//     "matrix A as computed by getrf() or gesv().  On exit B is replaced\n"
-//     "by the solution X.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "ipiv      'i' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "trans     'N', 'T' or 'C'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "           used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
-
-// static PyObject* getrs(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B, *ipiv;
-//     int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
-// #if PY_MAJOR_VERSION >= 3
-//     int trans_ = 'N';
-// #endif
-//     char trans = 'N';
-//     char *kwlist[] = {"A", "ipiv", "B", "trans", "n", "nrhs", "ldA",
-//         "ldB", "offsetA", "offsetB", NULL};
-
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOO|Ciiiiii", kwlist,
-//         &A, &ipiv, &B, &trans_, &n, &nrhs, &ldA, &ldB, &oA, &oB))
-//         return NULL;
-//     trans = trans_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOO|ciiiiii", kwlist,
-//         &A, &ipiv, &B, &trans, &n, &nrhs, &ldA, &ldB, &oA, &oB))
-//         return NULL;
-// #endif
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (trans != 'N' && trans != 'T' && trans != 'C')
-//         err_char("trans", "'N', 'T', 'C'");
-//     if (n < 0){
-//         n = A->nrows;
-//         if (n != A->ncols){
-//             PyErr_SetString(PyExc_TypeError, "A must be square");
-//             return NULL;
-//         }
-//     }
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1, n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-//     if (len(ipiv) < n) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(n*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-//     int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             if (trans == 'C') trans = 'T';
-//             Py_BEGIN_ALLOW_THREADS
-//             dgetrs_(&trans, &n, &nrhs, MAT_BUFD(A)+oA, &ldA, ipiv_ptr,
-//                 MAT_BUFD(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgetrs_(&trans, &n, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
-//                 MAT_BUFZ(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-// 	default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     free(ipiv_ptr);
-// #endif
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_getri[] =
-//     "Inverse of a real or complex matrix.\n\n"
-//     "getri(A, ipiv, n=A.size[0], ldA = max(1,A.size[0]), offsetA=0)\n\n"
-//     "PURPOSE\n"
-//     "Computes the inverse of real or complex matrix of order n.  On\n"
-//     "entry, A and ipiv contain the LU factorization, as returned by\n"
-//     "gesv() or getrf().  On exit A is replaced by the inverse.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "ipiv      'i' matrix\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer";
-
-// static PyObject* getri(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *ipiv;
-//     int n=-1, ldA=0, oA=0, info, lwork;
-//     void *work;
-//     number wl;
-//     char *kwlist[] = {"A", "ipiv", "n", "ldA", "offsetA", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|iii", kwlist, &A,
-//         &ipiv, &n, &ldA, &oA)) return NULL;
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
-//     if (n < 0){
-//         n = A->nrows;
-//         if (n != A->ncols){
-//             PyErr_SetString(PyExc_TypeError, "A must be square");
-//             return NULL;
-//         }
-//     }
-//     if (n == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (len(ipiv) < n) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(n*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-//     int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             lwork = -1;
-//             Py_BEGIN_ALLOW_THREADS
-//             dgetri_(&n, NULL, &ldA, NULL, &wl.d, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             lwork = (int) wl.d;
-//             if (!(work = (void *) calloc(lwork, sizeof(double)))) {
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//                 free(ipiv_ptr);
-// #endif
-//                 return PyErr_NoMemory();
-//             }
-//             Py_BEGIN_ALLOW_THREADS
-//             dgetri_(&n, MAT_BUFD(A)+oA, &ldA, ipiv_ptr, (double *) work,
-//                 &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             free(work);
-//             break;
-
-//         case COMPLEX:
-//             lwork = -1;
-//             Py_BEGIN_ALLOW_THREADS
-//             zgetri_(&n, NULL, &ldA, NULL, &wl.z, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             lwork = (int) creal(wl.z);
-//             if (!(work = (void *) calloc(lwork, sizeof(complex_t)))){
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//                 free(ipiv_ptr);
-// #endif
-//                 return PyErr_NoMemory();
-//             }
-//             Py_BEGIN_ALLOW_THREADS
-//             zgetri_(&n, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
-//                 (complex_t *) work, &lwork, &info);
-//             Py_END_ALLOW_THREADS
-//             free(work);
-//             break;
-
-//         default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     free(ipiv_ptr);
-// #endif
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gesv[] =
-//     "Solves a general real or complex set of linear equations.\n\n"
-//     "dgesv(A, B, ipiv=None, n=A.size[0], nrhs=B.size[1], \n"
-//     "      ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0, \n"
-//     "      offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "Solves A*X=B with A n by n real or complex.\n"
-//     "If ipiv is provided, then on exit A is overwritten with the details\n"
-//     "of the LU factorization, and ipiv contains the permutation matrix.\n"
-//     "If ipiv is not provided, then gesv() does not return the \n"
-//     "factorization and does not modify A.  On exit B is replaced with\n"
-//     "the solution X.\n\n"
-//     "ARGUMENTS.\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "ipiv      'i' matrix of length at least n\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetA   nonnegative integer";
-
-// static PyObject* gesv(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B, *ipiv=NULL;
-//     int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info, k;
-//     void *Ac=NULL;
-//     int *ipivc=NULL;
-//     static char *kwlist[] = {"A", "B", "ipiv", "n", "nrhs", "ldA",
-//         "ldB", "offsetA", "offsetB", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OO|Oiiiiii", kwlist,
-//         &A, &B, &ipiv, &n, &nrhs, &ldA, &ldB, &oA, &oB)) return NULL;
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (ipiv && (!Matrix_Check(ipiv) || ipiv->id != INT))
-//         err_int_mtrx("ipiv");
-//     if (n < 0){
-//         n = A->nrows;
-//         if (n != A->ncols){
-//             PyErr_SetString(PyExc_TypeError, "A must be square");
-//             return NULL;
-//         }
-//     }
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1, n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-//     if (ipiv && len(ipiv) < n) err_buf_len("ipiv");
-
-//     if (ipiv) {
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//         if (!(ipivc = (int *) calloc(n, sizeof(int))))
-//             return PyErr_NoMemory();
-// #else
-//         ipivc = MAT_BUFI(ipiv);
-// #endif
-//     }
-//     else if (!(ipivc = (int *) calloc(n, sizeof(int))))
-//         return PyErr_NoMemory();
-
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             if (ipiv)
-//                 Py_BEGIN_ALLOW_THREADS
-//                 dgesv_(&n, &nrhs, MAT_BUFD(A)+oA, &ldA, ipivc,
-//                     MAT_BUFD(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//             else {
-//                 if (!(Ac = (void *) calloc(n*n, sizeof(double)))){
-//                     free(ipivc);
-//                     return PyErr_NoMemory();
-//                 }
-//                 for (k=0; k<n; k++) memcpy((double *) Ac + k*n,
-//                     MAT_BUFD(A)+oA+k*ldA, n*sizeof(double));
-//                 Py_BEGIN_ALLOW_THREADS
-//                 dgesv_(&n, &nrhs, (double *) Ac, &n, ipivc,
-//                     MAT_BUFD(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//                 free(Ac);
-//             }
-//             break;
-
-//         case COMPLEX:
-//             if (ipiv)
-//                 Py_BEGIN_ALLOW_THREADS
-//                 zgesv_(&n, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipivc,
-//                     MAT_BUFZ(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//             else {
-//                 if (!(Ac = (void *) calloc(n*n, sizeof(complex_t)))){
-//                     free(ipivc);
-//                     return PyErr_NoMemory();
-//                 }
-//                 for (k=0; k<n; k++) memcpy((complex_t *) Ac + k*n,
-//                     MAT_BUFZ(A)+oA+k*ldA, n*sizeof(complex_t));
-//                 Py_BEGIN_ALLOW_THREADS
-//                 zgesv_(&n, &nrhs, (complex_t *) Ac, &n, ipivc,
-//                     MAT_BUFZ(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//                 free(Ac);
-//             }
-//             break;
-
-//         default:
-//             if (ipiv){
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//                 free(ipivc);
-// #endif
-//             }
-//             else free(ipivc);
-//             err_invalid_id;
-//     }
-
-//     if (ipiv){
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//         for (k=0; k<n; k++) MAT_BUFI(ipiv)[k] = ipivc[k];
-//         free(ipivc);
-// #endif
-//     }
-//     else free(ipivc);
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gbtrf[] =
-//     "LU factorization of a real or complex m by n band matrix.\n\n"
-//     "gbtrf(A, m, kl, ipiv, n=A.size[1], ku=A.size[0]-2*kl-1,\n"
-//     "      ldA=max(1,A.size[0]), offsetA=0)\n\n"
-//     "PURPOSE\n"
-//     "Computes the LU factorization of an m by n band matrix with kl\n"
-//     "subdiagonals and ku superdiagonals.  On entry, the diagonals are\n"
-//     "stored in rows kl+1 to 2*kl+ku+1 of the array A, in the BLAS format\n"
-//     "for general band matrices.   On exit A and ipiv contains the\n"
-//     "factorization.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "m         nonnegative integer\n\n"
-//     "kl        nonnegative integer.\n\n"
-//     "ipiv      'i' matrix of length at least min(m,n)\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ku        nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= 2*kl+ku+1.  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "offsetA   nonnegative integer";
-
-// static PyObject* gbtrf(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *ipiv;
-//     int m, kl, n=-1, ku=-1, ldA=0, oA=0, info;
-//     char *kwlist[] = {"A", "m", "kl", "ipiv", "n", "ku", "ldA", "offsetA",
-//         NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OiiO|iiii", kwlist,
-//         &A, &m, &kl, &ipiv, &n, &ku, &ldA, &oA)) return NULL;
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (m < 0) err_nn_int("m");
-//     if (kl < 0) err_nn_int("kl");
-//     if (n < 0) n = A->ncols;
-//     if (m == 0 || n == 0) return Py_BuildValue("");
-//     if (ku < 0) ku = A->nrows - 2*kl - 1;
-//     if (ku < 0) err_nn_int("kl");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < 2*kl + ku + 1) err_ld("ldA");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + 2*kl + ku + 1 > len(A)) err_buf_len("A");
-//     if (!Matrix_Check(ipiv) || ipiv ->id != INT) err_int_mtrx("ipiv");
-//     if (len(ipiv) < MIN(n,m)) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(MIN(m,n)*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(A)) {
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dgbtrf_(&m, &n, &kl, &ku, MAT_BUFD(A)+oA, &ldA, ipiv_ptr,
-//                 &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgbtrf_(&m, &n, &kl, &ku, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
-//                 &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int i;  for (i=0; i<MIN(m,n); i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
-//     free(ipiv_ptr);
-// #endif
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gbtrs[] =
-//     "Solves a real or complex set of linear equations with a banded\n"
-//     "coefficient matrix, given the LU factorization computed by gbtrf()\n"
-//     "or gbsv().\n\n"
-//     "gbtrs(A, kl, ipiv, B, trans='N', n=A.size[1], ku=A.size[0]-2*kl-1,\n"
-//     "      nrhs=B.size[1], ldA=max(1,AB.size[0]), ldB=max(1,B.size[0]),\n"
-//     "      offsetA=0, offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "If trans is 'N', solves A*X = B.\n"
-//     "If trans is 'T', solves A^T*X = B.\n"
-//     "If trans is 'C', solves A^H*X = B.\n"
-//     "On entry, A and ipiv contain the LU factorization of an n by n\n"
-//     "band matrix A as computed by getrf() or gbsv().  On exit B is\n"
-//     "replaced by the solution X.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "kl        nonnegative integer\n\n"
-//     "ipiv      'i' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "trans     'N', 'T' or 'C'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ku        nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= 2*kl+ku+1.  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          default value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
-
-// static PyObject* gbtrs(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B, *ipiv;
-//     int kl, n=-1, ku=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
-// #if PY_MAJOR_VERSION >= 3
-//     int trans_ = 'N';
-// #endif
-//     char trans = 'N';
-//     char *kwlist[] = {"A", "kl", "ipiv", "B", "trans", "n", "ku", "nrhs",
-//         "ldA", "ldB", "offsetA", "offsetB", NULL};
-
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OiOO|Ciiiiiii", kwlist,
-//         &A, &kl, &ipiv, &B, &trans_, &n, &ku, &nrhs, &ldA, &ldB, &oA,
-//         &oB)) 
-//         return NULL;
-//     trans = (char) trans_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OiOO|ciiiiiii", kwlist,
-//         &A, &kl, &ipiv, &B, &trans, &n, &ku, &nrhs, &ldA, &ldB, &oA,
-//         &oB)) 
-//         return NULL;
-// #endif
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (trans != 'N' && trans != 'T' && trans != 'C')
-//         err_char("trans", "'N', 'T', 'C'");
-//     if (kl < 0) err_nn_int("kl");
-//     if (ku < 0) ku = A->nrows - 2*kl - 1;
-//     if (ku < 0) err_nn_int("kl");
-//     if (n < 0) n = A->ncols;
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < 2*kl+ku+1) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1, n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + 2*kl + ku + 1 > len(A)) err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-//     if (len(ipiv) < n) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(n*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-//     int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             if (trans == 'C') trans = 'T';
-//             Py_BEGIN_ALLOW_THREADS
-//             dgbtrs_(&trans, &n, &kl, &ku, &nrhs, MAT_BUFD(A)+oA, &ldA,
-//                 ipiv_ptr, MAT_BUFD(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgbtrs_(&trans, &n, &kl, &ku, &nrhs, MAT_BUFZ(A)+oA, &ldA,
-//                 ipiv_ptr, MAT_BUFZ(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-// 	default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     free(ipiv_ptr);
-// #endif
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gbsv[] =
-//     "Solves a real or complex set of linear equations with a banded\n"
-//     "coefficient matrix.\n\n"
-//     "gbsv(A, kl, B, ipiv=None, ku=None, n=A.size[1], nrhs=B.size[1],\n"
-//     "     ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0, \n"
-//     "     offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "Solves A*X=B with A an n by n real or complex band matrix with kl\n"
-//     "subdiagonals and ku superdiagonals.\n"
-//     "If ipiv is provided, then on entry the kl+ku+1 diagonals of the\n"
-//     "matrix are stored in rows kl+1 to 2*kl+ku+1 of A, in the BLAS\n"
-//     "format for general band matrices.  On exit, A and ipiv contain the\n"
-//     "details of the factorization.  If ipiv is not provided, then on\n"
-//     "entry the diagonals of the matrix are stored in rows 1 to kl+ku+1 \n"
-//     "of A, and gbsv() does not return the factorization and does not\n"
-//     "modify A.  On exit B is replaced with solution X.\n\n"
-//     "ARGUMENTS.\n"
-//     "A         'd' or 'z' banded matrix\n\n"
-//     "kl        nonnegative integer\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as A.\n\n"
-//     "ipiv      'i' matrix of length at least n\n\n"
-//     "ku        nonnegative integer.  If negative, the default value is\n"
-//     "          used.  The default value is A.size[0]-kl-1 if ipiv is\n"
-//     "          not provided, and A.size[0]-2*kl-1 otherwise.\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= kl+ku+1 if ipiv is not provided\n"
-//     "          and ldA >= 2*kl+ku+1 if ipiv is provided.  If zero, the\n"
-//     "          default value is used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          default value is used.\n\n"
-//     "offsetA   nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
-
-
-// static PyObject* gbsv(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A, *B, *ipiv=NULL;
-//     void *Ac;
-//     int kl, ku=-1, n=-1, nrhs=-1, ldA=0, oA=0, ldB=0, oB=0, info, k;
-//     int *ipivc=NULL;
-//     static char *kwlist[] = {"A", "kl", "B", "ipiv", "ku", "n", "nrhs",
-//         "ldA", "ldB", "oA", "oB", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OiO|Oiiiiiii", kwlist,
-//         &A, &kl, &B, &ipiv, &ku, &n, &nrhs, &ldA, &ldB, &oA, &oB))
-//         return NULL;
-
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
-//     if (ipiv && (!Matrix_Check(ipiv) || ipiv->id != INT))
-//         err_int_mtrx("ipiv");
-//     if (n < 0) n = A->ncols;
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (kl < 0) err_nn_int("kl");
-//     if (ku < 0) ku = A->nrows - kl - 1 - (ipiv ? kl : 0);
-//     if (ku < 0) err_nn_int("ku");
-//     if (ldA == 0) ldA = MAX(1, A->nrows);
-//     if (ldA < ( ipiv ? 2*kl+ku+1 : kl+ku+1)) err_ld("ldA");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1,n)) err_ld("ldB");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + (ipiv ? 2*kl+ku+1 : kl+ku+1) > len(A))
-//         err_buf_len("A");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-//     if (ipiv && len(ipiv) < n) err_buf_len("ipiv");
-
-//     if (ipiv) {
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//         if (!(ipivc = (int *) calloc(n, sizeof(int))))
-//             return PyErr_NoMemory();
-// #else
-//         ipivc = MAT_BUFI(ipiv);
-// #endif
-//     }
-//     else if (!(ipivc = (int *) calloc(n, sizeof(int))))
-//         return PyErr_NoMemory();
-
-//     switch (MAT_ID(A)) {
-//         case DOUBLE:
-//             if (ipiv)
-//                 Py_BEGIN_ALLOW_THREADS
-//                 dgbsv_(&n, &kl, &ku, &nrhs, MAT_BUFD(A)+oA, &ldA, ipivc,
-//                     MAT_BUFD(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//             else {
-//                 if (!(Ac = (void *) calloc((2*kl+ku+1)*n,
-//                     sizeof(double)))){
-//                     free(ipivc);
-//                     return PyErr_NoMemory();
-//                 }
-//                 for (k=0; k<n; k++)
-//                     memcpy((double *) Ac + kl + k*(2*kl+ku+1),
-//                         MAT_BUFD(A) + oA + k*ldA,
-//                         (kl+ku+1)*sizeof(double));
-//                 ldA = 2*kl+ku+1;
-//                 Py_BEGIN_ALLOW_THREADS
-//                 dgbsv_(&n, &kl, &ku, &nrhs, (double *) Ac, &ldA, ipivc,
-//                     MAT_BUFD(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//                 free(Ac);
-//             }
-//             break;
-
-//         case COMPLEX:
-//             if (ipiv)
-//                 Py_BEGIN_ALLOW_THREADS
-//                 zgbsv_(&n, &kl, &ku, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipivc,
-//                     MAT_BUFZ(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//             else {
-//                 if (!(Ac = (void *) calloc((2*kl+ku+1)*n,
-//                     sizeof(complex_t)))){
-//                     free(ipivc);
-//                     return PyErr_NoMemory();
-//                 }
-//                 for (k=0; k<n; k++)
-//                     memcpy((complex_t *) Ac + kl + k*(2*kl+ku+1),
-//                         MAT_BUFZ(A) + oA + k*ldA,
-//                         (kl+ku+1)*sizeof(complex_t));
-//                 ldA = 2*kl+ku+1;
-//                 Py_BEGIN_ALLOW_THREADS
-//                 zgbsv_(&n, &kl, &ku, &nrhs, (complex_t *) Ac, &ldA, 
-//                     ipivc, MAT_BUFZ(B)+oB, &ldB, &info);
-//                 Py_END_ALLOW_THREADS
-//                 free(Ac);
-//             }
-//             break;
-
-//         default:
-//             if (ipiv){
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//                 free(ipivc);
-// #endif
-//             }
-//             else free(ipivc);
-//             err_invalid_id;
-//     }
-
-//     if (ipiv){
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//         for (k=0; k<n; k++) MAT_BUFI(ipiv)[k] = ipivc[k];
-//         free(ipivc);
-// #endif
-//     }
-//     else free(ipivc);
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gttrf[] =
-//     "LU factorization of a real or complex tridiagonal matrix.\n\n"
-//     "gttrf(dl, d, du, du2, ipiv, n=len(d)-offsetd, offsetdl=0, offsetd=0,"
-//     "\n"
-//     "      offsetdu=0)\n\n"
-//     "PURPOSE\n"
-//     "Factors an n by n real or complex tridiagonal matrix A as A = P*L*U."
-//     "\n  A is specified by its lower diagonal dl, diagonal d, and upper\n"
-//     "diagonal du.  On exit dl, d, du, du2 and ipiv contain the details\n"
-//     "of the factorization.\n\n"
-//     "ARGUMENTS.\n"
-//     "dl        'd' or 'z' matrix\n\n"
-//     "d         'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "du        'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "du2       'd' or 'z' matrix of length at least n-2.  Must have the\n"
-//     "           same type as dl.\n\n"
-//     "ipiv      'i' matrix of length at least n\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "offsetdl  nonnegative integer\n\n"
-//     "offsetd   nonnegative integer\n\n"
-//     "offsetdu  nonnegative integer";
-
-// static PyObject* gttrf(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *dl, *d, *du, *du2, *ipiv;
-//     int n=-1, odl=0, od=0, odu=0, info;
-//     static char *kwlist[] = {"dl", "d", "du", "du2", "ipiv", "n",
-//         "offsetdl", "offsetd", "offsetdu", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOOOO|iiii", kwlist,
-//         &dl, &d, &du, &du2, &ipiv, &n, &odl, &od, &odu))
-//         return NULL;
-
-//     if (!Matrix_Check(dl)) err_mtrx("dl");
-//     if (!Matrix_Check(d)) err_mtrx("d");
-//     if (!Matrix_Check(du)) err_mtrx("du");
-//     if (!Matrix_Check(du2)) err_mtrx("du");
-//     if ((MAT_ID(dl) != MAT_ID(d)) || (MAT_ID(dl) != MAT_ID(du)) ||
-//         (MAT_ID(dl) != MAT_ID(du2))) err_conflicting_ids;
-//     if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
-//     if (od < 0) err_nn_int("offsetd");
-//     if (n < 0) n = len(d) - od;
-//     if (n < 0) err_buf_len("d");
-//     if (n == 0) return Py_BuildValue("");
-//     if (odl < 0) err_nn_int("offsetdl");
-//     if (odl + n - 1  > len(dl)) err_buf_len("dl");
-//     if (od + n > len(d)) err_buf_len("d");
-//     if (odu < 0) err_nn_int("offsetdu");
-//     if (odu + n - 1  > len(du)) err_buf_len("du");
-//     if (n - 2  > len(du2)) err_buf_len("du2");
-//     if (len(ipiv) < n) err_buf_len("ipiv");
-//     if (n > len(ipiv)) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(n*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(dl)){
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dgttrf_(&n, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od, MAT_BUFD(du)+odu,
-//                 MAT_BUFD(du2), ipiv_ptr, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgttrf_(&n, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od, MAT_BUFZ(du)+odu,
-//                 MAT_BUFZ(du2), ipiv_ptr, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int i;  for (i=0; i<n; i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
-//     free(ipiv_ptr);
-// #endif
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gttrs[] =
-//     "Solves a real or complex tridiagonal set of linear equations, \n"
-//     "given the LU factorization computed by gttrf().\n\n"
-//     "gttrs(dl, d, du, du2, ipiv, B, trans='N', n=len(d)-offsetd,\n"
-//     "      nrhs=B.size[1], ldB=max(1,B.size[0]), offsetdl=0, offsetd=0,\n"
-//     "      offsetdu=0, offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "If trans is 'N', solves A*X=B.\n"
-//     "If trans is 'T', solves A^T*X=B.\n"
-//     "If trans is 'C', solves A^H*X=B.\n"
-//     "On entry, dl, d, du, du2 and ipiv contain the LU factorization of \n"
-//     "an n by n tridiagonal matrix A as computed by gttrf().  On exit B\n"
-//     "is replaced by the solution X.\n\n"
-//     "ARGUMENTS.\n"
-//     "dl        'd' or 'z' matrix\n\n"
-//     "d         'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "du        'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "du2       'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "ipiv      'i' matrix\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type oas dl.\n\n"
-//     "trans     'N', 'T' or 'C'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetdl  nonnegative integer\n\n"
-//     "offsetd   nonnegative integer\n\n"
-//     "offsetdu  nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
-
-// static PyObject* gttrs(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *dl, *d, *du, *du2, *ipiv, *B;
-// #if PY_MAJOR_VERSION >= 3
-//     int trans_ = 'N';
-// #endif
-//     char trans = 'N';
-//     int n=-1, nrhs=-1, ldB=0, odl=0, od=0, odu=0, oB=0, info;
-//     static char *kwlist[] = {"dl", "d", "du", "du2", "ipiv", "B", "trans",
-//         "n", "nrhs", "ldB", "offsetdl", "offsetd", "offsetdu", "offsetB",
-//         NULL};
-
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOOOOO|ciiiiiii",
-//         kwlist, &dl, &d, &du, &du2, &ipiv, &B, &trans, &n, &nrhs, &ldB,
-//         &odl, &od, &odu, &oB)) return NULL;
-//     trans = (char) trans_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOOOOO|ciiiiiii",
-//         kwlist, &dl, &d, &du, &du2, &ipiv, &B, &trans, &n, &nrhs, &ldB,
-//         &odl, &od, &odu, &oB)) return NULL;
-// #endif
-
-//     if (!Matrix_Check(dl)) err_mtrx("dl");
-//     if (!Matrix_Check(d)) err_mtrx("d");
-//     if (!Matrix_Check(du)) err_mtrx("du");
-//     if (!Matrix_Check(du2)) err_mtrx("du");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if ((MAT_ID(dl) != MAT_ID(d)) || (MAT_ID(dl) != MAT_ID(du)) ||
-//         (MAT_ID(dl) != MAT_ID(du2)) || (MAT_ID(dl) != MAT_ID(B)))
-//         err_conflicting_ids;
-//     if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
-//     if (trans != 'N' && trans != 'T' && trans != 'C')
-//         err_char("trans", "'N', 'T', 'C'");
-//     if (od < 0) err_nn_int("offsetd");
-//     if (n < 0) n = len(d) - od;
-//     if (n < 0) err_buf_len("d");
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1, n)) err_ld("ldB");
-//     if (odl < 0) err_nn_int("offsetdl");
-//     if (odl + n - 1  > len(dl)) err_buf_len("dl");
-//     if (od + n > len(d)) err_buf_len("d");
-//     if (odu < 0) err_nn_int("offsetdu");
-//     if (odu + n - 1  > len(du)) err_buf_len("du");
-//     if (n - 2  > len(du2)) err_buf_len("du2");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-//     if (n > len(ipiv)) err_buf_len("ipiv");
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     int *ipiv_ptr = malloc(n*sizeof(int));
-//     if (!ipiv_ptr) return PyErr_NoMemory();
-//     int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
-// #else
-//     int *ipiv_ptr = MAT_BUFI(ipiv);
-// #endif
-
-//     switch (MAT_ID(dl)){
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dgttrs_(&trans, &n, &nrhs, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od,
-//                 MAT_BUFD(du)+odu, MAT_BUFD(du2), ipiv_ptr,
-//                 MAT_BUFD(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgttrs_(&trans, &n, &nrhs, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od,
-//                 MAT_BUFZ(du)+odu, MAT_BUFZ(du2), ipiv_ptr,
-//                 MAT_BUFZ(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//             free(ipiv_ptr);
-// #endif
-//             err_invalid_id;
-//     }
-
-// #if (SIZEOF_INT < SIZEOF_SIZE_T)
-//     free(ipiv_ptr);
-// #endif
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
-
-
-// static char doc_gtsv[] =
-//     "Solves a real or complex set of linear equations with a tridiagonal\n"
-//     "coefficient matrix.\n\n"
-//     "gtsv(dl, d, du, B, n=len(d)-offsetd, nrhs=B.size[1], \n"
-//     "     ldB=max(1,B.size[0]), offsetdl=0, offsetd=0, offsetdu=0, \n"
-//     "     offsetB=0)\n\n"
-//     "PURPOSE\n"
-//     "Solves A*X=B with A n by n real or complex and tridiagonal.\n"
-//     "A is specified by its lower diagonal dl, diagonal d and upper \n"
-//     "diagonal du.  On exit B is overwritten with the solution, and dl,\n"
-//     "d, du are overwritten with the elements of the upper triangular\n"
-//     "matrix in the LU factorization of A.\n\n"
-//     "ARGUMENTS.\n"
-//     "dl        'd' or 'z' matrix\n\n"
-//     "d         'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "du        'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "B         'd' or 'z' matrix.  Must have the same type as dl.\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "nrhs      nonnegative integer.  If negative, the default value is\n"
-//     "          used.\n\n"
-//     "ldB       positive integer.  ldB >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetdl  nonnegative integer\n\n"
-//     "offsetd   nonnegative integer\n\n"
-//     "offsetdu  nonnegative integer\n\n"
-//     "offsetB   nonnegative integer";
-
-// static PyObject* gtsv(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *dl, *d, *du, *B;
-//     int n=-1, nrhs=-1, ldB=0, odl=0, od=0, odu=0, oB=0, info;
-//     static char *kwlist[] = {"dl", "d", "du", "B", "n", "nrhs", "ldB",
-//         "offsetdl", "offsetd", "offsetdu", "offsetB", NULL};
-
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "OOOO|iiiiiii", kwlist,
-//         &dl, &d, &du, &B, &n, &nrhs, &ldB, &odl, &od, &odu, &oB))
-//         return NULL;
-
-//     if (!Matrix_Check(dl)) err_mtrx("dl");
-//     if (!Matrix_Check(d)) err_mtrx("d");
-//     if (!Matrix_Check(du)) err_mtrx("du");
-//     if (!Matrix_Check(B)) err_mtrx("B");
-//     if ((MAT_ID(dl) != MAT_ID(B)) || (MAT_ID(dl) != MAT_ID(d)) ||
-//         (MAT_ID(dl) != MAT_ID(du)) || (MAT_ID(dl) != MAT_ID(B)))
-//         err_conflicting_ids;
-//     if (od < 0) err_nn_int("offsetd");
-//     if (n < 0) n = len(d) - od;
-//     if (n < 0) err_buf_len("d");
-//     if (nrhs < 0) nrhs = B->ncols;
-//     if (n == 0 || nrhs == 0) return Py_BuildValue("");
-//     if (odl < 0) err_nn_int("offsetdl");
-//     if (odl + n - 1  > len(dl)) err_buf_len("dl");
-//     if (od + n > len(d)) err_buf_len("d");
-//     if (odu < 0) err_nn_int("offsetdu");
-//     if (odu + n - 1  > len(du)) err_buf_len("du");
-//     if (oB < 0) err_nn_int("offsetB");
-//     if (ldB == 0) ldB = MAX(1,B->nrows);
-//     if (ldB < MAX(1, n)) err_ld("ldB");
-//     if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
-
-//     switch (MAT_ID(dl)){
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dgtsv_(&n, &nrhs, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od,
-//                 MAT_BUFD(du)+odu, MAT_BUFD(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zgtsv_(&n, &nrhs, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od,
-//                 MAT_BUFZ(du)+odu, MAT_BUFZ(B)+oB, &ldB, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-//             err_invalid_id;
-//     }
-
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+/**
+ * @brief LU factorization of a general real or complex m-by-n matrix
+ * 
+ * lapack_getrf(A, ipiv, m=A.size[0], n=A.size[1], ldA=max(1,A.size[0]), offsetA=0)
+ * 
+ * @details
+ * Computes the LU decomposition with partial pivoting:
+ * - P·A = L·U
+ * where:
+ * - P is a permutation matrix,
+ * - L is lower triangular with unit diagonal elements,
+ * - U is upper triangular.
+ * 
+ * On exit:
+ * - The matrix A is overwritten with L and U (L is stored below the diagonal with implied ones, U on and above the diagonal).
+ * - The pivot vector `ipiv` contains the row swap information to form P.
+ *
+ * @param[in,out] A     Input matrix to factor ('d' or 'z' type)
+ * @param[out]    ipiv  Pivot indices ('i' type), length at least min(m,n)
+ * @param[in]     m     Number of rows of A (default: A.size[0]) (default = -1)
+ * @param[in]     n     Number of columns of A (default: A.size[1]) (default = -1)
+ * @param[in]     ldA   Leading dimension of A (≥ max(1,m)) (default = 0)
+ * @param[in]     offsetA Matrix offset (nonnegative) (default = 0)
+ *
+ * @note
+ * - Implements the LAPACK GETRF operation
+ * - Suitable for general dense matrices (real or complex)
+ * - The factorization is used in solving linear systems or computing determinants
+ * - Uses partial pivoting with row interchanges for numerical stability
+ *
+ * @warning
+ * - Matrix must be of type 'd' (real) or 'z' (complex)
+ * - ldA must be ≥ max(1,m)
+ * - offsetA must be ≥ 0
+ * - If U(k,k) = 0, the matrix is exactly singular and factorization fails at step k
+ * - Input matrix A will be overwritten
+ *
+ * @see LAPACK GETRF documentation
+ */
+void lapack_getrf(matrix *A, matrix *ipiv, int m, int n, int ldA, int offsetA)
+{
+    // int m=-1, n=-1, ldA=0, oA=0, info;
+    int oA = offsetA, info;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(ipiv) || ipiv ->id != INT) err_int_mtrx("ipiv");
+    if (m < 0) m = A->nrows;
+    if (n < 0) n = A->ncols;
+    if (m == 0 || n == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,m)) err_ld("ldA");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + m > len(A)) err_buf_len("A");
+    if (len(ipiv) < MIN(n,m)) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(MIN(m,n)*sizeof(int));
+    if (!ipiv_ptr) return;
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(A)) {
+        case DOUBLE:
+            dgetrf_(&m, &n, MAT_BUFD(A)+oA, &ldA, ipiv_ptr, &info);
+            break;
+
+        case COMPLEX:
+            zgetrf_(&m, &n, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr, &info);
+            break;
+
+        default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int i;  for (i=0; i<MIN(m,n); i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
+    free(ipiv_ptr);
+#endif
+
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Solves a system of linear equations using LU factorization.
+ * 
+ * lapack_getrs(A, ipiv, B, trans='N', n=A.size[0], nrhs=B.size[1],
+ *              ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0,
+ *              offsetB=0)
+ * 
+ * @details
+ * Solves a system of linear equations A*X = B, A^T*X = B, or A^H*X = B
+ * using the LU factorization computed by getrf() or gesv().
+ * On entry, A and ipiv must contain the LU factorization of the matrix A.
+ * On exit, B is overwritten with the solution matrix X.
+ * 
+ * @param[in]  A        Coefficient matrix ('d' or 'z' type), containing LU factors
+ * @param[in]  ipiv     Pivot indices matrix ('i' type), from LU factorization
+ * @param[in,out] B     Right-hand side matrix, replaced by the solution ('d' or 'z' type, same as A)
+ * @param[in]  trans    Specifies the system to solve:
+ *                      - 'N': A * X = B (No transpose)
+ *                      - 'T': A^T * X = B (Transpose)
+ *                      - 'C': A^H * X = B (Conjugate transpose)
+ *                      (default = 'N')
+ * @param[in]  n        Order of the matrix A (default = A.nrows, use -1 for default)
+ * @param[in]  nrhs     Number of right-hand sides (default = B.ncols, use -1 for default)
+ * @param[in]  ldA      Leading dimension of A (≥ max(1,n), use 0 for default)
+ * @param[in]  ldB      Leading dimension of B (≥ max(1,n), use 0 for default)
+ * @param[in]  offsetA  Offset into A matrix (nonnegative, default = 0)
+ * @param[in]  offsetB  Offset into B matrix (nonnegative, default = 0)
+ * 
+ */
+void lapack_getrs(matrix *A, matrix *ipiv, matrix *B, char trans, int n, int nrhs, 
+                  int ldA, int ldB, int offsetA, int offsetB)
+{
+    // int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
+    int oA = offsetA, oB = offsetB, info;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (trans != 'N' && trans != 'T' && trans != 'C')
+        err_char("trans", "'N', 'T', 'C'");
+    if (n < 0){
+        n = A->nrows;
+        if (n != A->ncols){
+            ERR_TYPE("A must be square");
+            return;
+        }
+    }
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1, n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    if (len(ipiv) < n) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(n*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+    int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            if (trans == 'C') trans = 'T';
+            dgetrs_(&trans, &n, &nrhs, MAT_BUFD(A)+oA, &ldA, ipiv_ptr,
+                MAT_BUFD(B)+oB, &ldB, &info);
+            break;
+
+        case COMPLEX:
+            zgetrs_(&trans, &n, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
+                MAT_BUFZ(B)+oB, &ldB, &info);
+            break;
+
+	default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    free(ipiv_ptr);
+#endif
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Inverse of a real or complex matrix using LU factorization
+ * 
+ * lapack_getri(A, ipiv, n=A.size[0], ldA=max(1,A.size[0]), offsetA=0)
+ * 
+ * @details
+ * Computes the inverse of a general real or complex matrix A of order n,
+ * using its LU decomposition from `lapack_getrf` or `lapack_gesv`:
+ * - A⁻¹ = inv(U)·inv(L)·P
+ * where:
+ * - A = P⁻¹·L·U (LU factorization with pivoting)
+ *
+ * On exit:
+ * - The input matrix A is overwritten with its inverse.
+ *
+ * @param[in,out] A     LU-factored matrix to invert ('d' or 'z' type)
+ * @param[in]     ipiv  Pivot indices from `getrf` ('i' type)
+ * @param[in]     n     Order of matrix A (default: A.size[0]) (default = -1)
+ * @param[in]     ldA   Leading dimension of A (≥ max(1,n)) (default = 0)
+ * @param[in]     offsetA Matrix offset (nonnegative) (default = 0)
+ */
+void lapack_getri(matrix *A, matrix *ipiv, int n, int ldA, int offsetA)
+{
+    // int n=-1, ldA=0, oA=0, info, lwork;
+    int oA = offsetA, info, lwork;
+    void *work;
+    number wl;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
+    if (n < 0){
+        n = A->nrows;
+        if (n != A->ncols){
+            ERR("A must be square");
+            return;
+        }
+    }
+    if (n == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
+    if (len(ipiv) < n) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(n*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+    int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            lwork = -1;
+            dgetri_(&n, NULL, &ldA, NULL, &wl.d, &lwork, &info);
+            lwork = (int) wl.d;
+            if (!(work = (void *) calloc(lwork, sizeof(double)))) {
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+                free(ipiv_ptr);
+#endif
+                err_no_memory;
+            }
+            dgetri_(&n, MAT_BUFD(A)+oA, &ldA, ipiv_ptr, (double *) work,
+                &lwork, &info);
+            free(work);
+            break;
+
+        case COMPLEX:
+            lwork = -1;
+            zgetri_(&n, NULL, &ldA, NULL, &wl.z, &lwork, &info);
+            lwork = (int) creal(wl.z);
+            if (!(work = (void *) calloc(lwork, sizeof(complex_t)))){
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+                free(ipiv_ptr);
+#endif
+                err_no_memory;
+            }
+            zgetri_(&n, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
+                (complex_t *) work, &lwork, &info);
+            free(work);
+            break;
+
+        default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    free(ipiv_ptr);
+#endif
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Solves a general real or complex system of linear equations.
+ * 
+ * lapack_dgesv(A, B, ipiv=None, n=A.size[0], nrhs=B.size[1], 
+ *              ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0, 
+ *              offsetB=0)
+ * 
+ * @details
+ * Solves the system A * X = B, where A is an n-by-n real or complex matrix.
+ * Computes the LU factorization of A (if ipiv is provided) and uses it to
+ * solve for X. On exit, B is overwritten with the solution.
+ * 
+ * If `ipiv` is provided, the LU factorization is stored in A and the pivot indices
+ * in `ipiv`. If `ipiv` is not provided, A is not modified and the LU factors are not returned.
+ * 
+ * @param[in,out] A       Coefficient matrix ('d' or 'z' type). May be overwritten with LU factors.
+ * @param[in,out] B       Right-hand side matrix, replaced by the solution X. Must have same type as A.
+ * @param[out]    ipiv    Pivot index vector ('i' type). Must have length at least n. If NULL, LU factors are not returned.
+ * @param[in]     n       Order of matrix A (default: A.nrows, use -1 for default).
+ * @param[in]     nrhs    Number of right-hand sides (default: B.ncols, use -1 for default).
+ * @param[in]     ldA     Leading dimension of A (≥ max(1,n), use 0 for default).
+ * @param[in]     ldB     Leading dimension of B (≥ max(1,n), use 0 for default).
+ * @param[in]     offsetA Offset into A matrix (nonnegative, default = 0).
+ * @param[in]     offsetB Offset into B matrix (nonnegative, default = 0).
+ * 
+ */
+void lapack_gesv(matrix *A, matrix *B, matrix *ipiv, int n, int nrhs, int ldA, int ldB, int offsetA, int offsetB)
+{
+    // int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info, k;
+    int oA = offsetA, oB = offsetB, info, k;
+
+    void *Ac=NULL;
+    int *ipivc=NULL;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (ipiv && (!Matrix_Check(ipiv) || ipiv->id != INT))
+        err_int_mtrx("ipiv");
+    if (n < 0){
+        n = A->nrows;
+        if (n != A->ncols){
+            ERR_TYPE("A must be square");
+            return;
+        }
+    }
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1, n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    if (ipiv && len(ipiv) < n) err_buf_len("ipiv");
+
+    if (ipiv) {
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+        if (!(ipivc = (int *) calloc(n, sizeof(int))))
+            err_no_memory;
+#else
+        ipivc = MAT_BUFI(ipiv);
+#endif
+    }
+    else if (!(ipivc = (int *) calloc(n, sizeof(int))))
+        err_no_memory;
+
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            if (ipiv)
+                dgesv_(&n, &nrhs, MAT_BUFD(A)+oA, &ldA, ipivc,
+                    MAT_BUFD(B)+oB, &ldB, &info);
+            else {
+                if (!(Ac = (void *) calloc(n*n, sizeof(double)))){
+                    free(ipivc);
+                    err_no_memory;
+                }
+                for (k=0; k<n; k++) memcpy((double *) Ac + k*n,
+                    MAT_BUFD(A)+oA+k*ldA, n*sizeof(double));
+                dgesv_(&n, &nrhs, (double *) Ac, &n, ipivc,
+                    MAT_BUFD(B)+oB, &ldB, &info);
+                free(Ac);
+            }
+            break;
+
+        case COMPLEX:
+            if (ipiv)
+                zgesv_(&n, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipivc,
+                    MAT_BUFZ(B)+oB, &ldB, &info);
+            else {
+                if (!(Ac = (void *) calloc(n*n, sizeof(complex_t)))){
+                    free(ipivc);
+                    err_no_memory;
+                }
+                for (k=0; k<n; k++) memcpy((complex_t *) Ac + k*n,
+                    MAT_BUFZ(A)+oA+k*ldA, n*sizeof(complex_t));
+                zgesv_(&n, &nrhs, (complex_t *) Ac, &n, ipivc,
+                    MAT_BUFZ(B)+oB, &ldB, &info);
+                free(Ac);
+            }
+            break;
+
+        default:
+            if (ipiv){
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+                free(ipivc);
+#endif
+            }
+            else free(ipivc);
+            err_invalid_id;
+    }
+
+    if (ipiv){
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+        for (k=0; k<n; k++) MAT_BUFI(ipiv)[k] = ipivc[k];
+        free(ipivc);
+#endif
+    }
+    else free(ipivc);
+
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+
+/**
+ * @brief LU factorization of a real or complex band matrix.
+ * 
+ * lapack_gbtrf(A, m, kl, ipiv, n=A.size[1], ku=A.size[0]-2*kl-1,
+ *              ldA=max(1,A.size[0]), offsetA=0)
+ * 
+ * @details
+ * Computes the LU factorization of an m-by-n real or complex band matrix
+ * with `kl` subdiagonals and `ku` superdiagonals using partial pivoting.
+ * The matrix is stored in BLAS banded format: the diagonals are located in
+ * rows `kl+1` to `2*kl+ku+1` of the array A.
+ * 
+ * On exit, the matrix `A` is overwritten with the LU factors, and the pivot
+ * indices are stored in `ipiv`.
+ * 
+ * @param[in,out] A       Input/output matrix ('d' or 'z' type) in banded storage format.
+ *                        On exit, contains details of the LU factorization.
+ * @param[in]     m       Number of rows of the matrix A (nonnegative).
+ * @param[in]     kl      Number of subdiagonals (nonnegative).
+ * @param[out]    ipiv    Pivot indices array ('i' type) of length at least min(m, n).
+ * @param[in]     n       Number of columns of the matrix A (default = A.ncols, use -1 for default).
+ * @param[in]     ku      Number of superdiagonals (default = A.nrows - 2*kl - 1, use -1 for default).
+ * @param[in]     ldA     Leading dimension of A (≥ 2*kl+ku+1). Use 0 for default.
+ * @param[in]     offsetA Offset into A (nonnegative, default = 0).
+ * 
+ */
+void lapack_gbtrf(matrix *A, int m, int kl, matrix *ipiv, int n, int ku, int ldA, int offsetA)
+{
+    // int m, kl, n=-1, ku=-1, ldA=0, oA=0, info;
+    int oA = offsetA, info;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (m < 0) err_nn_int("m");
+    if (kl < 0) err_nn_int("kl");
+    if (n < 0) n = A->ncols;
+    if (m == 0 || n == 0) return;
+    if (ku < 0) ku = A->nrows - 2*kl - 1;
+    if (ku < 0) err_nn_int("kl");
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < 2*kl + ku + 1) err_ld("ldA");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + 2*kl + ku + 1 > len(A)) err_buf_len("A");
+    if (!Matrix_Check(ipiv) || ipiv ->id != INT) err_int_mtrx("ipiv");
+    if (len(ipiv) < MIN(n,m)) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(MIN(m,n)*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(A)) {
+        case DOUBLE:
+            dgbtrf_(&m, &n, &kl, &ku, MAT_BUFD(A)+oA, &ldA, ipiv_ptr,
+                &info);
+            break;
+
+        case COMPLEX:
+            zgbtrf_(&m, &n, &kl, &ku, MAT_BUFZ(A)+oA, &ldA, ipiv_ptr,
+                &info);
+            break;
+
+        default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int i;  for (i=0; i<MIN(m,n); i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
+    free(ipiv_ptr);
+#endif
+
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Solves a linear system with a real or complex band matrix using its LU factorization.
+ * 
+ * lapack_gbtrs(A, kl, ipiv, B, trans='N', n=A.size[1], ku=A.size[0]-2*kl-1,
+ *              nrhs=B.size[1], ldA=max(1,A.size[0]), ldB=max(1,B.size[0]),
+ *              offsetA=0, offsetB=0)
+ * 
+ * @details
+ * Solves a system of linear equations A * X = B, A^T * X = B, or A^H * X = B
+ * using the LU factorization of a banded matrix `A` computed by gbtrf() or gbsv().
+ * 
+ * On entry, matrix `A` and the pivot indices `ipiv` contain the LU factorization
+ * of an n-by-n band matrix. On exit, the right-hand side matrix `B` is overwritten
+ * with the solution `X`.
+ * 
+ * This function corresponds to LAPACK routine `lapack_dgbtrs` or `lapack_zgbtrs`
+ * depending on the matrix type.
+ * 
+ * @param[in]  A        LU-factorized coefficient matrix ('d' or 'z' type) in banded format.
+ * @param[in]  kl       Number of subdiagonals (nonnegative).
+ * @param[in]  ipiv     Pivot indices ('i' type), as returned by gbtrf() or gbsv().
+ * @param[in,out] B     Right-hand side matrix, replaced by solution X. Must have same type as A.
+ * @param[in]  trans    Specifies the system to solve:
+ *                     - 'N': A * X = B
+ *                     - 'T': A^T * X = B
+ *                     - 'C': A^H * X = B
+ *                     (default = 'N')
+ * @param[in]  n        Order of the matrix A (default = A.ncols, use -1 for default).
+ * @param[in]  ku       Number of superdiagonals (default = A.nrows - 2*kl - 1, use -1 for default).
+ * @param[in]  nrhs     Number of right-hand sides (default = B.ncols, use -1 for default).
+ * @param[in]  ldA      Leading dimension of A (≥ 2*kl+ku+1, use 0 for default).
+ * @param[in]  ldB      Leading dimension of B (≥ max(1,n), use 0 for default).
+ * @param[in]  offsetA  Offset into A matrix (nonnegative, default = 0).
+ * @param[in]  offsetB  Offset into B matrix (nonnegative, default = 0).
+ * 
+ */
+void lapack_gbtrs(matrix *A, int kl, matrix *ipiv, matrix *B, char trans, int n, 
+                  int ku, int nrhs, int ldA, int ldB, int offsetA, int offsetB)
+{
+    // int kl, n=-1, ku=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
+
+    int oA = offsetA, oB = offsetB, info;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (trans != 'N' && trans != 'T' && trans != 'C')
+        err_char("trans", "'N', 'T', 'C'");
+    if (kl < 0) err_nn_int("kl");
+    if (ku < 0) ku = A->nrows - 2*kl - 1;
+    if (ku < 0) err_nn_int("kl");
+    if (n < 0) n = A->ncols;
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < 2*kl+ku+1) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1, n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + 2*kl + ku + 1 > len(A)) err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    if (len(ipiv) < n) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(n*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+    int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            if (trans == 'C') trans = 'T';
+            dgbtrs_(&trans, &n, &kl, &ku, &nrhs, MAT_BUFD(A)+oA, &ldA,
+                ipiv_ptr, MAT_BUFD(B)+oB, &ldB, &info);
+            break;
+
+        case COMPLEX:
+            zgbtrs_(&trans, &n, &kl, &ku, &nrhs, MAT_BUFZ(A)+oA, &ldA,
+                ipiv_ptr, MAT_BUFZ(B)+oB, &ldB, &info);
+            break;
+
+	default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    free(ipiv_ptr);
+#endif
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Solves a system of linear equations with a real or complex banded matrix.
+ * 
+ * lapack_gbsv(A, kl, B, ipiv=None, ku=None, n=A.size[1], nrhs=B.size[1],
+ *             ldA=max(1,A.size[0]), ldB=max(1,B.size[0]), offsetA=0, 
+ *             offsetB=0)
+ * 
+ * @details
+ * Solves the linear system A * X = B, where A is an n-by-n real or complex
+ * banded matrix with `kl` subdiagonals and `ku` superdiagonals.
+ * 
+ * If `ipiv` is provided, A is assumed to be stored in full banded BLAS format 
+ * (with diagonals in rows kl+1 to 2*kl+ku+1), and the function returns the LU
+ * factorization and pivot indices.
+ * 
+ * If `ipiv` is not provided, A must be stored in compact format (rows 1 to kl+ku+1)
+ * and will not be modified. In this case, the factorization is not returned.
+ * 
+ * On exit, B is overwritten with the solution matrix X.
+ * 
+ * This function corresponds to LAPACK routines `lapack_dgbsv` or `lapack_zgbsv`.
+ * 
+ * @param[in,out] A       Banded coefficient matrix ('d' or 'z' type). May be overwritten with LU factors.
+ * @param[in]     kl      Number of subdiagonals (nonnegative).
+ * @param[in,out] B       Right-hand side matrix, replaced by solution X. Must match A's type.
+ * @param[out]    ipiv    Pivot indices ('i' type) of length at least n. Optional; if NULL, factorization is not returned.
+ * @param[in]     ku      Number of superdiagonals. If negative, a default is used:
+ *                        - If ipiv is NULL: ku = A.nrows - kl - 1
+ *                        - Otherwise: ku = A.nrows - 2*kl - 1
+ * @param[in]     n       Order of matrix A (default: A.ncols, use -1 for default).
+ * @param[in]     nrhs    Number of right-hand sides (default: B.ncols, use -1 for default).
+ * @param[in]     ldA     Leading dimension of A. Must satisfy:
+ *                        - If ipiv is NULL: ldA ≥ kl+ku+1
+ *                        - Otherwise: ldA ≥ 2*kl+ku+1
+ *                        (Use 0 for default.)
+ * @param[in]     ldB     Leading dimension of B (≥ max(1,n), use 0 for default).
+ * @param[in]     offsetA Offset into A matrix (nonnegative, default = 0).
+ * @param[in]     offsetB Offset into B matrix (nonnegative, default = 0).
+ * 
+ */
+void lapack_gbsv(matrix *A, int kl, matrix *B, matrix *ipiv, int ku, int n, 
+                int nrhs, int ldA, int ldB, int offsetA, int offsetB)
+{
+    void *Ac;
+    // int kl, ku=-1, n=-1, nrhs=-1, ldA=0, oA=0, ldB=0, oB=0, info, k;
+    int oA = offsetA, oB = offsetB, info, k;
+    int *ipivc=NULL;
+
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if (MAT_ID(A) != MAT_ID(B)) err_conflicting_ids;
+    if (ipiv && (!Matrix_Check(ipiv) || ipiv->id != INT))
+        err_int_mtrx("ipiv");
+    if (n < 0) n = A->ncols;
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (kl < 0) err_nn_int("kl");
+    if (ku < 0) ku = A->nrows - kl - 1 - (ipiv ? kl : 0);
+    if (ku < 0) err_nn_int("ku");
+    if (ldA == 0) ldA = MAX(1, A->nrows);
+    if (ldA < ( ipiv ? 2*kl+ku+1 : kl+ku+1)) err_ld("ldA");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1,n)) err_ld("ldB");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + (ipiv ? 2*kl+ku+1 : kl+ku+1) > len(A))
+        err_buf_len("A");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    if (ipiv && len(ipiv) < n) err_buf_len("ipiv");
+
+    if (ipiv) {
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+        if (!(ipivc = (int *) calloc(n, sizeof(int))))
+            err_no_memory;
+#else
+        ipivc = MAT_BUFI(ipiv);
+#endif
+    }
+    else if (!(ipivc = (int *) calloc(n, sizeof(int))))
+        err_no_memory;
+
+    switch (MAT_ID(A)) {
+        case DOUBLE:
+            if (ipiv)
+                dgbsv_(&n, &kl, &ku, &nrhs, MAT_BUFD(A)+oA, &ldA, ipivc,
+                    MAT_BUFD(B)+oB, &ldB, &info);
+            else {
+                if (!(Ac = (void *) calloc((2*kl+ku+1)*n,
+                    sizeof(double)))){
+                    free(ipivc);
+                    err_no_memory;
+                }
+                for (k=0; k<n; k++)
+                    memcpy((double *) Ac + kl + k*(2*kl+ku+1),
+                        MAT_BUFD(A) + oA + k*ldA,
+                        (kl+ku+1)*sizeof(double));
+                ldA = 2*kl+ku+1;
+                dgbsv_(&n, &kl, &ku, &nrhs, (double *) Ac, &ldA, ipivc,
+                    MAT_BUFD(B)+oB, &ldB, &info);
+                free(Ac);
+            }
+            break;
+
+        case COMPLEX:
+            if (ipiv)
+                zgbsv_(&n, &kl, &ku, &nrhs, MAT_BUFZ(A)+oA, &ldA, ipivc,
+                    MAT_BUFZ(B)+oB, &ldB, &info);
+            else {
+                if (!(Ac = (void *) calloc((2*kl+ku+1)*n,
+                    sizeof(complex_t)))){
+                    free(ipivc);
+                    err_no_memory;
+                }
+                for (k=0; k<n; k++)
+                    memcpy((complex_t *) Ac + kl + k*(2*kl+ku+1),
+                        MAT_BUFZ(A) + oA + k*ldA,
+                        (kl+ku+1)*sizeof(complex_t));
+                ldA = 2*kl+ku+1;
+                zgbsv_(&n, &kl, &ku, &nrhs, (complex_t *) Ac, &ldA, 
+                    ipivc, MAT_BUFZ(B)+oB, &ldB, &info);
+                free(Ac);
+            }
+            break;
+
+        default:
+            if (ipiv){
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+                free(ipivc);
+#endif
+            }
+            else free(ipivc);
+            err_invalid_id;
+    }
+
+    if (ipiv){
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+        for (k=0; k<n; k++) MAT_BUFI(ipiv)[k] = ipivc[k];
+        free(ipivc);
+#endif
+    }
+    else free(ipivc);
+
+    if (info) err_lapack(info);
+    else return;
+
+}
+
+/**
+ * @brief LU factorization of a real or complex tridiagonal matrix.
+ * 
+ * lapack_gttrf(dl, d, du, du2, ipiv, n=len(d)-offsetd, 
+ *              offsetdl=0, offsetd=0, offsetdu=0)
+ * 
+ * @details
+ * Computes the LU factorization of an n-by-n real or complex tridiagonal matrix A,
+ * such that A = P * L * U, where P is a permutation matrix, L is unit lower triangular,
+ * and U is upper triangular.
+ * 
+ * The matrix A is specified by its diagonals:
+ * - `dl`: sub-diagonal (n-1 entries)
+ * - `d`: main diagonal (n entries)
+ * - `du`: super-diagonal (n-1 entries)
+ * 
+ * On exit, these vectors and `du2`, `ipiv` store the factorization data used for solving.
+ * 
+ * This function corresponds to LAPACK routine `lapack_dgttrf` or `lapack_zgttrf`.
+ * 
+ * @param[in,out] dl       Sub-diagonal vector ('d' or 'z' type), overwritten with L components.
+ * @param[in,out] d        Main diagonal vector ('d' or 'z' type), overwritten with U diagonal.
+ * @param[in,out] du       Super-diagonal vector ('d' or 'z' type), overwritten with U super-diagonal.
+ * @param[out]    du2      Second super-diagonal of U (length at least n-2), used in block LU factorization.
+ * @param[out]    ipiv     Pivot indices ('i' type), length at least n.
+ * @param[in]     n        Size of the system (default: len(d) - offsetd, use -1 for default).
+ * @param[in]     offsetdl Offset into dl (nonnegative, default = 0).
+ * @param[in]     offsetd  Offset into d (nonnegative, default = 0).
+ * @param[in]     offsetdu Offset into du (nonnegative, default = 0).
+ * 
+ */
+void lapack_gttrf(matrix *dl, matrix *d, matrix *du, matrix *du2, matrix *ipiv, 
+                 int n, int offsetdl, int offsetd, int offsetdu)
+{
+    // int n=-1, odl=0, od=0, odu=0, info;
+    int odl = offsetdl, od = offsetd, odu = offsetdu, info;
+
+    if (!Matrix_Check(dl)) err_mtrx("dl");
+    if (!Matrix_Check(d)) err_mtrx("d");
+    if (!Matrix_Check(du)) err_mtrx("du");
+    if (!Matrix_Check(du2)) err_mtrx("du");
+    if ((MAT_ID(dl) != MAT_ID(d)) || (MAT_ID(dl) != MAT_ID(du)) ||
+        (MAT_ID(dl) != MAT_ID(du2))) err_conflicting_ids;
+    if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
+    if (od < 0) err_nn_int("offsetd");
+    if (n < 0) n = len(d) - od;
+    if (n < 0) err_buf_len("d");
+    if (n == 0) return;
+    if (odl < 0) err_nn_int("offsetdl");
+    if (odl + n - 1  > len(dl)) err_buf_len("dl");
+    if (od + n > len(d)) err_buf_len("d");
+    if (odu < 0) err_nn_int("offsetdu");
+    if (odu + n - 1  > len(du)) err_buf_len("du");
+    if (n - 2  > len(du2)) err_buf_len("du2");
+    if (len(ipiv) < n) err_buf_len("ipiv");
+    if (n > len(ipiv)) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(n*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(dl)){
+        case DOUBLE:
+            dgttrf_(&n, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od, MAT_BUFD(du)+odu,
+                MAT_BUFD(du2), ipiv_ptr, &info);
+            break;
+
+        case COMPLEX:
+            zgttrf_(&n, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od, MAT_BUFZ(du)+odu,
+                MAT_BUFZ(du2), ipiv_ptr, &info);
+            break;
+
+        default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int i;  for (i=0; i<n; i++) MAT_BUFI(ipiv)[i] = ipiv_ptr[i];
+    free(ipiv_ptr);
+#endif
+    if (info) err_lapack(info);
+    else return;
+}
+
+
+/**
+ * @brief Solves a tridiagonal system of equations using LU factorization from gttrf().
+ * 
+ * lapack_gttrs(dl, d, du, du2, ipiv, B, trans='N', n=len(d)-offsetd,
+ *              nrhs=B.size[1], ldB=max(1,B.size[0]), offsetdl=0, offsetd=0,
+ *              offsetdu=0, offsetB=0)
+ * 
+ * @details
+ * Solves the system A * X = B, A^T * X = B, or A^H * X = B, where A is an n-by-n
+ * real or complex tridiagonal matrix that has been previously factorized using `gttrf()`.
+ * 
+ * On entry:
+ * - `dl`, `d`, `du`, `du2`, and `ipiv` must contain the LU factorization of A.
+ * On exit:
+ * - Matrix `B` is overwritten with the solution matrix `X`.
+ * 
+ * This function corresponds to LAPACK routine `lapack_dgttrs` or `lapack_zgttrs`.
+ * 
+ * @param[in]     dl       Sub-diagonal of A ('d' or 'z' type).
+ * @param[in]     d        Main diagonal of A ('d' or 'z' type).
+ * @param[in]     du       Super-diagonal of A ('d' or 'z' type).
+ * @param[in]     du2      Second super-diagonal ('d' or 'z' type), from gttrf().
+ * @param[in]     ipiv     Pivot indices ('i' type), as computed by gttrf().
+ * @param[in,out] B        Right-hand side matrix, replaced by solution X. Same type as `dl`.
+ * @param[in]     trans    Specifies the system to solve:
+ *                         - 'N': A * X = B (no transpose)
+ *                         - 'T': A^T * X = B (transpose)
+ *                         - 'C': A^H * X = B (conjugate transpose)
+ *                         (default = 'N')
+ * @param[in]     n        Order of matrix A (default = len(d) - offsetd, use -1 for default).
+ * @param[in]     nrhs     Number of right-hand sides (default = B.ncols, use -1 for default).
+ * @param[in]     ldB      Leading dimension of B (≥ max(1,n), use 0 for default).
+ * @param[in]     offsetdl Offset into `dl` (nonnegative, default = 0).
+ * @param[in]     offsetd  Offset into `d` (nonnegative, default = 0).
+ * @param[in]     offsetdu Offset into `du` (nonnegative, default = 0).
+ * @param[in]     offsetB  Offset into `B` (nonnegative, default = 0).
+ * 
+ */
+void lapack_gttrs(matrix *dl, matrix *d, matrix *du, matrix *du2, matrix *ipiv, matrix *B, char trans, 
+                  int n, int nrhs, int ldB, int offsetdl, int offsetd, int offsetdu, int offsetB)
+{
+    // int n=-1, nrhs=-1, ldB=0, odl=0, od=0, odu=0, oB=0, info;
+    int odl = offsetdl, od = offsetd, odu = offsetdu, oB = offsetB, info;
+
+    if (trans == 0) trans = 'N';
+
+    if (!Matrix_Check(dl)) err_mtrx("dl");
+    if (!Matrix_Check(d)) err_mtrx("d");
+    if (!Matrix_Check(du)) err_mtrx("du");
+    if (!Matrix_Check(du2)) err_mtrx("du");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if ((MAT_ID(dl) != MAT_ID(d)) || (MAT_ID(dl) != MAT_ID(du)) ||
+        (MAT_ID(dl) != MAT_ID(du2)) || (MAT_ID(dl) != MAT_ID(B)))
+        err_conflicting_ids;
+    if (!Matrix_Check(ipiv) || ipiv->id != INT) err_int_mtrx("ipiv");
+    if (trans != 'N' && trans != 'T' && trans != 'C')
+        err_char("trans", "'N', 'T', 'C'");
+    if (od < 0) err_nn_int("offsetd");
+    if (n < 0) n = len(d) - od;
+    if (n < 0) err_buf_len("d");
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1, n)) err_ld("ldB");
+    if (odl < 0) err_nn_int("offsetdl");
+    if (odl + n - 1  > len(dl)) err_buf_len("dl");
+    if (od + n > len(d)) err_buf_len("d");
+    if (odu < 0) err_nn_int("offsetdu");
+    if (odu + n - 1  > len(du)) err_buf_len("du");
+    if (n - 2  > len(du2)) err_buf_len("du2");
+    if (oB < 0) err_nn_int("offsetB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+    if (n > len(ipiv)) err_buf_len("ipiv");
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    int *ipiv_ptr = malloc(n*sizeof(int));
+    if (!ipiv_ptr) err_no_memory;
+    int i;  for (i=0; i<n; i++) ipiv_ptr[i] = MAT_BUFI(ipiv)[i];
+#else
+    int *ipiv_ptr = MAT_BUFI(ipiv);
+#endif
+
+    switch (MAT_ID(dl)){
+        case DOUBLE:
+            dgttrs_(&trans, &n, &nrhs, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od,
+                MAT_BUFD(du)+odu, MAT_BUFD(du2), ipiv_ptr,
+                MAT_BUFD(B)+oB, &ldB, &info);
+            break;
+
+        case COMPLEX:
+            zgttrs_(&trans, &n, &nrhs, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od,
+                MAT_BUFZ(du)+odu, MAT_BUFZ(du2), ipiv_ptr,
+                MAT_BUFZ(B)+oB, &ldB, &info);
+            break;
+
+        default:
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+            free(ipiv_ptr);
+#endif
+            err_invalid_id;
+    }
+
+#if (SIZEOF_INT < SIZEOF_SIZE_T)
+    free(ipiv_ptr);
+#endif
+
+    if (info) err_lapack(info);
+    else return;
+}
+
+/**
+ * @brief Solves a system of linear equations with a real or complex tridiagonal matrix.
+ * 
+ * lapack_gtsv(dl, d, du, B, n=len(d)-offsetd, nrhs=B.size[1], 
+ *             ldB=max(1,B.size[0]), offsetdl=0, offsetd=0, offsetdu=0, 
+ *             offsetB=0)
+ * 
+ * @details
+ * Solves the linear system A * X = B, where A is an n-by-n real or complex 
+ * tridiagonal matrix. The matrix A is specified by its three diagonals:
+ * - `dl`: sub-diagonal (n-1 elements)
+ * - `d` : main diagonal (n elements)
+ * - `du`: super-diagonal (n-1 elements)
+ * 
+ * On exit:
+ * - B is overwritten with the solution matrix X.
+ * - `dl`, `d`, and `du` are overwritten with the LU factorization of A.
+ * 
+ * This function corresponds to LAPACK routines `lapack_dgtsv` or `lapack_zgtsv`.
+ * 
+ * @param[in,out] dl       Sub-diagonal of A ('d' or 'z' type), overwritten with L factors.
+ * @param[in,out] d        Main diagonal of A ('d' or 'z' type), overwritten with U diagonal.
+ * @param[in,out] du       Super-diagonal of A ('d' or 'z' type), overwritten with U super-diagonal.
+ * @param[in,out] B        Right-hand side matrix, replaced by solution X. Must have same type as `dl`.
+ * @param[in]     n        Order of the system (default = len(d) - offsetd, use -1 for default).
+ * @param[in]     nrhs     Number of right-hand sides (default = B.ncols, use -1 for default).
+ * @param[in]     ldB      Leading dimension of B (≥ max(1,n), use 0 for default).
+ * @param[in]     offsetdl Offset into `dl` (nonnegative, default = 0).
+ * @param[in]     offsetd  Offset into `d` (nonnegative, default = 0).
+ * @param[in]     offsetdu Offset into `du` (nonnegative, default = 0).
+ * @param[in]     offsetB  Offset into `B` (nonnegative, default = 0).
+ * 
+ */
+void lapack_gtsv(matrix *dl, matrix *d, matrix *du, matrix *B, int n, int nrhs, 
+                int ldB, int offsetdl, int offsetd, int offsetdu, int offsetB)
+{
+    // int n=-1, nrhs=-1, ldB=0, odl=0, od=0, odu=0, oB=0, info;
+    int odl = offsetdl, od = offsetd, odu = offsetdu, oB = offsetB, info;
+
+    if (!Matrix_Check(dl)) err_mtrx("dl");
+    if (!Matrix_Check(d)) err_mtrx("d");
+    if (!Matrix_Check(du)) err_mtrx("du");
+    if (!Matrix_Check(B)) err_mtrx("B");
+    if ((MAT_ID(dl) != MAT_ID(B)) || (MAT_ID(dl) != MAT_ID(d)) ||
+        (MAT_ID(dl) != MAT_ID(du)) || (MAT_ID(dl) != MAT_ID(B)))
+        err_conflicting_ids;
+    if (od < 0) err_nn_int("offsetd");
+    if (n < 0) n = len(d) - od;
+    if (n < 0) err_buf_len("d");
+    if (nrhs < 0) nrhs = B->ncols;
+    if (n == 0 || nrhs == 0) return;
+    if (odl < 0) err_nn_int("offsetdl");
+    if (odl + n - 1  > len(dl)) err_buf_len("dl");
+    if (od + n > len(d)) err_buf_len("d");
+    if (odu < 0) err_nn_int("offsetdu");
+    if (odu + n - 1  > len(du)) err_buf_len("du");
+    if (oB < 0) err_nn_int("offsetB");
+    if (ldB == 0) ldB = MAX(1,B->nrows);
+    if (ldB < MAX(1, n)) err_ld("ldB");
+    if (oB + (nrhs-1)*ldB + n > len(B)) err_buf_len("B");
+
+    switch (MAT_ID(dl)){
+        case DOUBLE:
+            dgtsv_(&n, &nrhs, MAT_BUFD(dl)+odl, MAT_BUFD(d)+od,
+                MAT_BUFD(du)+odu, MAT_BUFD(B)+oB, &ldB, &info);
+            break;
+
+        case COMPLEX:
+            zgtsv_(&n, &nrhs, MAT_BUFZ(dl)+odl, MAT_BUFZ(d)+od,
+                MAT_BUFZ(du)+odu, MAT_BUFZ(B)+oB, &ldB, &info);
+            break;
+
+        default:
+            err_invalid_id;
+    }
+    if (info) err_lapack(info);
+    else return;
+}
 
 
 /**
@@ -1176,8 +1078,7 @@
 void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA)
 {
     // int n=-1, ldA=0, oA=0, info;
-    int oA, info;
-    oA = offsetA;
+    int oA = offsetA, info;
 
     // Default values
     if (uplo == 0) uplo = 'L';
@@ -1236,10 +1137,11 @@ void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA)
  * @param[in] offsetB Starting offset in matrix B (default = 0)
  *
  */
-void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, int oA, int oB)
+void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int ldB, 
+                  int offsetA, int offsetB)
 {
     // int n=-1, nrhs=-1, ldA=0, ldB=0, oA=0, oB=0, info;
-    int info;
+    int oA = offsetA, oB = offsetB, info;
 
     // Default values
     if (uplo == 0) uplo = 'L';
@@ -1285,73 +1187,64 @@ void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int
 }
 
 
-// static char doc_potri[] =
-//     "Inverse of a real symmetric or complex Hermitian positive definite\n"
-//     "matrix.\n\n"
-//     "potri(A, uplo='L', n=A.size[0], ldA=max(1,A.size[0]), offsetA=0)\n\n"
-//     "PURPOSE\n"
-//     "Computes the inverse of a real symmetric or complex Hermitian\n"
-//     "positive definite matrix of order n.  On entry, A contains the\n"
-//     "Cholesky factor, as returned by posv() or potrf().  On exit it is\n"
-//     "replaced by the inverse.\n\n"
-//     "ARGUMENTS\n"
-//     "A         'd' or 'z' matrix\n\n"
-//     "uplo      'L' or 'U'\n\n"
-//     "n         nonnegative integer.  If negative, the default value is\n\n"
-//     "          used.\n\n"
-//     "ldA       positive integer.  ldA >= max(1,n).  If zero, the default\n"
-//     "          value is used.\n\n"
-//     "offsetA   nonnegative integer";
+/**
+ * @brief Inverse of a real symmetric or complex Hermitian positive definite matrix
+ * 
+ * potri(A, uplo='L', n=A.size[0], ldA=max(1,A.size[0]), offsetA=0)
+ * 
+ * @details
+ * Computes the inverse of a real symmetric or complex Hermitian
+ * positive definite matrix of order n. On entry, A contains the
+ * Cholesky factor, as returned by posv() or potrf(). On exit it is
+ * replaced by the inverse.
+ *
+ * @param[in,out] A       Input/output matrix ('d' or 'z' type)
+ * @param[in] uplo        Triangle selection ('L' for lower, 'U' for upper) (default = 'L')
+ * @param[in] n           Matrix order (default: A.nrows, -1 uses default)
+ * @param[in] ldA         Leading dimension (≥ max(1,n), 0 uses default)  
+ * @param[in] offsetA     Matrix offset (nonnegative) (default = 0)
+ *
+ * @note
+ * - Requires Cholesky factorization as input (from potrf or posv)
+ * - Overwrites input matrix with its inverse
+ * - Handles both real symmetric and complex Hermitian matrices
+ * - Only specified triangle (upper/lower) is used and updated
+ *
+ * @warning
+ * - Matrix must contain valid Cholesky factorization
+ * - ldA must satisfy ldA ≥ max(1,n)
+ * - offsetA must be nonnegative
+ * - Undefined behavior if input is not a valid Cholesky factor
+ */
+void lapack_potri(matrix* A, char uplo, int n, int ldA, int offsetA)
+{
+    // int n=-1, ldA=0, oA=0, info;
+    int oA = offsetA, info;
 
-// static PyObject* potri(PyObject *self, PyObject *args, PyObject *kwrds)
-// {
-//     matrix *A;
-//     int n=-1, ldA=0, oA=0, info;
-// #if PY_MAJOR_VERSION >= 3
-//     int uplo_ = 'L';
-// #endif
-//     char uplo = 'L';
-//     char *kwlist[] = {"A", "uplo", "n", "ldA", "offsetA", NULL};
+    if (!Matrix_Check(A)) err_mtrx("A");
+    if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
+    if (n < 0) n = A->nrows;
+    if (n == 0) return;
+    if (ldA == 0) ldA = MAX(1,A->nrows);
+    if (ldA < MAX(1,n)) err_ld("ldA");
+    if (oA < 0) err_nn_int("offsetA");
+    if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
 
-// #if PY_MAJOR_VERSION >= 3
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "O|Ciii", kwlist,
-//         &A, &uplo_, &n, &ldA, &oA)) return NULL;
-//     uplo = (char) uplo_;
-// #else
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "O|ciii", kwlist,
-//         &A, &uplo, &n, &ldA, &oA)) return NULL;
-// #endif
+    switch (MAT_ID(A)){
+        case DOUBLE:
+            dpotri_(&uplo, &n, MAT_BUFD(A)+oA, &ldA, &info);
+            break;
 
-//     if (!Matrix_Check(A)) err_mtrx("A");
-//     if (uplo != 'L' && uplo != 'U') err_char("uplo", "'L', 'U'");
-//     if (n < 0) n = A->nrows;
-//     if (n == 0) return Py_BuildValue("");
-//     if (ldA == 0) ldA = MAX(1,A->nrows);
-//     if (ldA < MAX(1,n)) err_ld("ldA");
-//     if (oA < 0) err_nn_int("offsetA");
-//     if (oA + (n-1)*ldA + n > len(A)) err_buf_len("A");
-//     if (!PyArg_ParseTupleAndKeywords(args, kwrds, "O|ciii", kwlist,
-//         &A, &uplo, &n, &ldA, &oA)) return NULL;
+        case COMPLEX:
+            zpotri_(&uplo, &n, MAT_BUFZ(A)+oA, &ldA, &info);
+            break;
 
-//     switch (MAT_ID(A)){
-//         case DOUBLE:
-//             Py_BEGIN_ALLOW_THREADS
-//             dpotri_(&uplo, &n, MAT_BUFD(A)+oA, &ldA, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         case COMPLEX:
-//             Py_BEGIN_ALLOW_THREADS
-//             zpotri_(&uplo, &n, MAT_BUFZ(A)+oA, &ldA, &info);
-//             Py_END_ALLOW_THREADS
-//             break;
-
-//         default:
-//             err_invalid_id;
-//     }
-//     if (info) err_lapack
-//     else return Py_BuildValue("");
-// }
+        default:
+            err_invalid_id;
+    }
+    if (info) err_lapack(info);
+    else return;
+}
 
 
 // static char doc_posv[] =
@@ -3020,9 +2913,9 @@ void lapack_potrs(matrix *A, matrix *B, char uplo, int n, int nrhs, int ldA, int
  * @param offsetB Matrix offset in B (default = 0, nonnegative)
  */
 void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
-                int n, int nrhs, int ldA, int ldB, int oA, int oB)
+                int n, int nrhs, int ldA, int ldB, int offsetA, int offsetB)
 {
-    int info;
+    int oA = offsetA, oB = offsetB, info;
 
     // Set default values
     if (uplo == 0) uplo = 'L';
@@ -3438,7 +3331,7 @@ void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA)
             zgeqrf_(&m, &n, NULL, &ldA, NULL, &wl.z, &lwork, &info);
             lwork = (int) creal(wl.z);
             if (!(work = (void *) calloc(lwork, sizeof(complex_t))))
-                return err_no_memory;
+                err_no_memory;
             zgeqrf_(&m, &n, MAT_BUFZ(A)+oA, &ldA, MAT_BUFZ(tau),
                 (complex_t *) work, &lwork, &info);
             free(work);
@@ -5891,22 +5784,6 @@ void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char trans,
  * @param[in] offsetU  Matrix U offset (nonnegative)
  * @param[in] offsetVt Matrix Vt offset (nonnegative)
  *
- * @note
- * - Implements the LAPACK GESVD operation
- * - Handles both real and complex matrices
- * - Contents of A are destroyed on exit
- * - Singular values returned in descending order
- * - For complex matrices, Vt returns conjugate transposes
- * - Default dimensions are derived from input sizes
- *
- * @warning
- * - Matrix must have compatible dimensions
- * - All output matrices must be properly allocated
- * - Leading dimensions must satisfy requirements
- * - Offsets must be nonnegative
- * - Undefined behavior if dimensions are invalid
- * - jobu and jobvt cannot both be 'O'
- *
  * @see LAPACK GESVD documentation
  */
 void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix *Vt, int m, int n, 
@@ -5917,11 +5794,7 @@ void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix
     void *work=NULL;
     number wl;
 
-    int oA, oS, oU, oVt, info, lwork;
-    oA = offsetA;
-    oS = offsetS;
-    oU = offsetU;
-    oVt = offsetVt;
+    int oA = offsetA, oS = offsetS, oU = offsetU, oVt = offsetVt, info, lwork;
 
     // Default values
     if (jobu == 0) jobu = 'N';

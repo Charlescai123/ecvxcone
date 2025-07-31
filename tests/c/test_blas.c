@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 199309L
 #include "cvxopt.h"
 #include "misc.h"
+#include "blas.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +38,6 @@ void test_blas_tbmv() {
     double Abuf[] = {0, 1, 2, 3, 4, 5};
     matrix A = { .id = DOUBLE, .buffer = Abuf, .nrows = 2, .ncols = 3, .mat_type = MAT_DENSE };
 
-    // 创建 x 向量: b = A * [1,1,1]^T = [1,5,15]^T
     double xbuf[] = {1.0, 2.0, 3.0};
     matrix x = { .id = DOUBLE, .buffer = xbuf, .nrows = 3, .ncols = 1, .mat_type = MAT_DENSE };
 
@@ -62,7 +62,6 @@ void test_blas_scal(){
     number alpha;
     alpha.d = alpha_val;
 
-    // 分配和初始化一个 double 类型的 matrix
     matrix x;
     x.mat_type = MAT_DENSE;
     x.nrows = n;
@@ -76,23 +75,19 @@ void test_blas_scal(){
 
     double scaler = 2.1;
 
-    // 打印原始数据
     printf("Original x:\n");
     for (int i = 0; i < n; ++i)
         printf("%f ", data[i]);
     printf("\n");
 
-    // 执行 scaling
     blas_scal((void*)&scaler, &x, -1, 1, 0);  
 
-    // 打印结果
     printf("Scaled x:\n");
     for (int i = 0; i < n; ++i)
         printf("%f ", data[i]);
     printf("\n");
     printf("x.buffer:%p\n", x.buffer);
 
-    // 清理
     free(data);
 }
 
@@ -108,7 +103,6 @@ void test_blas_nrm2() {
     double result = blas_nrm2(&x, -1, 1, 0);
     printf("nrm2 = %f (expected 5.0)\n", result);
 
-    // 再测试一个带 offset 的情况
     double data2[] = {1.0, 0.0, 5.0, 12.0};  // offset = 2: [5.0, 12.0] => nrm = 13.0
     matrix x2 = { .id = DOUBLE, .buffer = data2, .nrows = 4, .ncols = 1, .mat_type = MAT_DENSE };
     double result2 = blas_nrm2(&x2, -1, 1, 0);
@@ -116,15 +110,14 @@ void test_blas_nrm2() {
 }
 
 void test_blas_trmm() {
-        // 创建一个下三角矩阵 A (3x3)，列主序
     // A =
     // [1 0 0]
     // [2 1 0]
     // [3 4 1]
     double Abuf[] = {
-        1.0, 2.0, 3.0,  // 第一列
-        0.0, 1.0, 4.0,  // 第二列
-        0.0, 0.0, 1.0   // 第三列
+        1.0, 2.0, 3.0,  
+        0.0, 1.0, 4.0,  
+        0.0, 0.0, 1.0  
     };
     matrix A = {
         .id = DOUBLE,
@@ -134,14 +127,13 @@ void test_blas_trmm() {
         .mat_type = MAT_DENSE
     };
 
-    // 创建矩阵 B (3x2)，列主序
     // B =
     // [1 2]
     // [3 4]
     // [5 6]
     double Bbuf[] = {
-        1.0, 3.0, 5.0,  // 第一列
-        2.0, 4.0, 6.0   // 第二列
+        1.0, 3.0, 5.0, 
+        2.0, 4.0, 6.0  
     };
     matrix B = {
         .id = DOUBLE,
@@ -151,15 +143,14 @@ void test_blas_trmm() {
         .mat_type = MAT_DENSE
     };
 
-    // 设置 alpha = 1.0
     number alpha;
     alpha.d = 1.0;
 
-    // 调用 trmm_base，计算 B ← A * B
+    // Call trmm_blas to compute B ← A * B
     blas_trmm(&A, &B, 'L', 'L', 'N', 'N', &alpha,
               -1, -1, 0, 0, 0, 0);
 
-    // 打印结果 B
+    // Print result B
     printf("B := A * B =\n");
     for (int i = 0; i < B.nrows; ++i) {
         for (int j = 0; j < B.ncols; ++j) {
@@ -171,15 +162,14 @@ void test_blas_trmm() {
 
 void test_blas_trsm() {
     printf("==== Running test_blas_trsm ====\n");
-        // 创建一个下三角矩阵 A (3x3)，列主序
     // A =
     // [1 0 0]
     // [2 1 0]
     // [3 4 1]
     double Abuf[] = {
-        1.0, 2.0, 3.0,  // 第一列
-        0.0, 1.0, 4.0,  // 第二列
-        0.0, 0.0, 1.0   // 第三列
+        1.0, 2.0, 3.0,  
+        0.0, 1.0, 4.0,  
+        0.0, 0.0, 1.0  
     };
     matrix A = {
         .id = DOUBLE,
@@ -189,7 +179,6 @@ void test_blas_trsm() {
         .mat_type = MAT_DENSE
     };
 
-    // 创建矩阵 B (3x2)，列主序
     // B =
     // [1 2]
     // [3 4]
@@ -206,28 +195,27 @@ void test_blas_trsm() {
         .mat_type = MAT_DENSE
     };
 
-    // 设置 alpha = 1.0
     number alpha;
     alpha.d = 1.0;
 
-    // 调用 blas_trsm，计算 B ← A * B
+    // Call blas_trsm to compute B ← A * B
     blas_trsm(&A, &B, 'L', 'L', 'N', 'N', &alpha,
               -1, -1, 0, 0, 0, 0);
 
     clock_t start, end;
     double elapsed;
-    start = clock();  // 开始计时
-    // 调用 base_syrk
-    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
+    start = clock();  
+
+    // Call base_syrk
+    for(int i = 0; i < TEST_TIMES; ++i) {  
         // y := alpha * A * x + beta * y
         blas_trsm(&A, &B, 'L', 'L', 'N', 'N', &alpha,
               -1, -1, 0, 0, 0, 0);
     }
-    end = clock();  // 结束计时
+    end = clock();  
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
     
-    // 打印结果 B
     printf("B := A * B =\n");
     for (int i = 0; i < B.nrows; ++i) {
         for (int j = 0; j < B.ncols; ++j) {
@@ -238,15 +226,14 @@ void test_blas_trsm() {
 }
 
 void test_blas_trsv() {
-        // 创建一个下三角矩阵 A (3x3)，列主序
     // A =
     // [1 0 0]
     // [2 1 0]
     // [3 4 1]
     double Abuf[] = {
-        1.0, 2.0, 3.0,  // 第一列
-        0.0, 1.0, 4.0,  // 第二列
-        0.0, 0.0, 1.0   // 第三列
+        1.0, 2.0, 3.0, 
+        0.0, 1.0, 4.0, 
+        0.0, 0.0, 1.0  
     };
     matrix A = {
         .id = DOUBLE,
@@ -256,13 +243,12 @@ void test_blas_trsv() {
         .mat_type = MAT_DENSE
     };
 
-    // 创建矩阵 B (3x2)，列主序
     // B =
     // [1]
     // [5]
     // [15]
     double Bbuf[] = {
-        1.0, 5.0, 14.0,  // 第一列
+        1.0, 5.0, 14.0, 
     };
     matrix x = {
         .id = DOUBLE,
@@ -272,15 +258,12 @@ void test_blas_trsv() {
         .mat_type = MAT_DENSE
     };
 
-    // 设置 alpha = 1.0
     number alpha;
     alpha.d = 1.0;
 
-    // 调用 blas_trsm，计算 B ← A * B
     blas_trsv(&A, &x, 'L', 'N', 'N', -1,
               0, 1, 0, 0);
 
-    // 打印结果 B
     printf("B := A * B =\n");
     for (int i = 0; i < x.nrows; ++i) {
         for (int j = 0; j < x.ncols; ++j) {
@@ -323,18 +306,17 @@ void test_blas_syrk() {
     alpha.d = 1.0;
     beta.d = 1.0;
 
-    // 调用 blas_syrk：计算 C := A * A^T
     blas_syrk(&A, &C, 'L', 'N', &alpha, &beta,
-              -1, -1, 0, 0, 0, 0);  // 默认 m, n, ldA, ldC, offset
+              -1, -1, 0, 0, 0, 0);  // m, n, ldA, ldC, offset
 
     printf("C = A * A^T =\n");
     for (int i = 0; i < C.nrows; ++i) {
         for (int j = 0; j < C.ncols; ++j) {
             double cij;
             if (i >= j)
-                cij = ((double*)C.buffer)[i + j * C.nrows]; // 下三角：实际更新过
+                cij = ((double*)C.buffer)[i + j * C.nrows];
             else
-                cij = ((double*)C.buffer)[j + i * C.nrows]; // 上三角：镜像
+                cij = ((double*)C.buffer)[j + i * C.nrows]; 
             printf("%8.3f ", cij);
         }
         printf("\n");
@@ -370,7 +352,7 @@ void test_blas_gemm() {
         .mat_type = MAT_DENSE
     };
 
-    // C: 2x3, 初始为 0
+    // C: 2x3, 
     double Cbuf[6] = {0, 1, 2, 3, 4, 5};
     matrix C = {
         .id = DOUBLE,
@@ -385,11 +367,9 @@ void test_blas_gemm() {
     alpha.d = 2.0;
     beta.d = 1.0;
 
-    // 调用 blas_gemm：C = alpha*A*B + beta*C
     blas_gemm(&A, &B, &C, 'N', 'N', &alpha, &beta,
-              -1, -1, -1, 0, 0, 0, 0, 0, 0);  // 默认 m,n,k, ldA/B/C=0, offset=0
+              -1, -1, -1, 0, 0, 0, 0, 0, 0);  
 
-    // 打印结果 C
     printf("C = A * B =\n");
     for (int i = 0; i < C.nrows; ++i) {
         for (int j = 0; j < C.ncols; ++j) {
@@ -439,25 +419,22 @@ void test_blas_gemv() {
     alpha.d = 2.0;
     beta.d = 1.0;
 
-
     // y := alpha * A * x + beta * y
     blas_gemv(&A, &x, &y, 'N', &alpha, &beta,
-              -1, -1,0, 1, 1, 0, 0, 0);  // 默认 m,n, ldA, incX, incY
+              -1, -1,0, 1, 1, 0, 0, 0); 
     clock_t start, end;
     double elapsed;
-    start = clock();  // 开始计时
-    // 调用 base_syrk
-    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
+    start = clock();  
+
+    for(int i = 0; i < TEST_TIMES; ++i) { 
             // y := alpha * A * x + beta * y
         blas_gemv(&A, &x, &y, 'N', &alpha, &beta,
-              -1, -1,0, 1, 1, 0, 0, 0);  // 默认 m,n, ldA, incX, incY
+              -1, -1,0, 1, 1, 0, 0, 0);  
     }
-    end = clock();  // 结束计时
+    end = clock();
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
 
-
-    // 打印 y 结果
     printf("y = A * x =\n");
     for (int i = 0; i < y.nrows; ++i) {
         printf("%8.3f\n", ((double*)y.buffer)[i]);
@@ -468,42 +445,38 @@ void test_blas_copy() {
     int nrows = 3, ncols = 1;
     int size = nrows * ncols;
 
-    // 初始化源矩阵 x
     double *xbuf = malloc(sizeof(double) * size);
     for (int i = 0; i < size; ++i) xbuf[i] = (double)(i + 1);  // 1, 2, 3
     xbuf[0]=3;
 
     matrix x = {.mat_type = 0, .buffer = xbuf, .nrows = nrows, .ncols = ncols, .id = DOUBLE};
 
-    // 初始化目标矩阵 y
     double *ybuf = calloc(size, sizeof(double));
     matrix y = {.mat_type = 0, .buffer = ybuf, .nrows = nrows, .ncols = ncols, .id = DOUBLE};
 
     printf("Before copy:\n");
     print_matrix(&y);
 
-    // 执行复制: copy x -> y
     blas_copy(&x, &y, -1, 1, 1, 0, 0);
 
     printf("After copy:\n");
     print_matrix(&y);
 
-    // 清理
     free(xbuf);
     free(ybuf);
 }
 
 void test_blas_tbsv() {
 
-    // 创建 A: 带宽 k=1，下三角，3x3，带状存储 ldA = k+1 = 2
-    // 存储顺序 (col-major):
+    // Create A: 3x3 lower triangular matrix with bandwidth k=1
+    // Storage order (col-major):
     // A[0] = 1 (diag), A[1] = 2 (below diag)
     // A[2] = 3, A[3] = 5
     // A[4] = 6, A[5] = -
     double Abuf[] = {0, 1, 2, 3,4, 5};
     matrix A = { .id = DOUBLE, .buffer = Abuf, .nrows = 2, .ncols = 3, .mat_type = MAT_DENSE };
 
-    // 创建 x 向量: b = A * [1,1,1]^T = [1,5,15]^T
+    // Create x vector: b = A * [1,1,1]^T = [1,5,15]^T
     double xbuf[] = {3.0, 7.0, 10.0};
     matrix x = { .id = DOUBLE, .buffer = xbuf, .nrows = 3, .ncols = 1, .mat_type = MAT_DENSE };
 
@@ -519,7 +492,7 @@ void test_blas_dot(){
     double Abuf[] = {0.5, 1, 2};
     matrix x = { .id = DOUBLE, .buffer = Abuf, .nrows = 3, .ncols = 1, .mat_type = MAT_DENSE };
 
-    // 创建 x 向量: b = A * [1,1,1]^T = [1,5,15]^T
+    // Create y vector: b = A * [1,1,1]^T = [1,5,15]^T
     double xbuf[] = {3.0, 7.0, 10.0};
     matrix y = { .id = DOUBLE, .buffer = xbuf, .nrows = 3, .ncols = 1, .mat_type = MAT_DENSE };
 

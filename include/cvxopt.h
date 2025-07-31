@@ -46,7 +46,8 @@
 #define MAT_DENSE     3
 #define MAT_SPARSE    4
 
-#define int_t  ptrdiff_t
+// #define int_t  ptrdiff_t
+#define int_t  int
 
 typedef struct {
   int  mat_type;        // MAT_DENSE

@@ -1,5 +1,7 @@
 #include "cvxopt.h"
 #include "misc.h"
+#include "blas.h"
+#include "base.h"
 
 #ifndef __SOLVER__
 #define __SOLVER__
@@ -12,13 +14,6 @@
 extern const char* defaultsolvers[];
 extern char msg[256];
 
-// Static variables for ECVXCONE
-// static matrix *c;
-// static spmatrix *G;
-// static matrix *h;
-// static spmatrix *A;
-// static matrix *b;
-
 typedef struct {
     bool debug;
     double kktreg;
@@ -28,30 +23,12 @@ typedef struct {
     double feastol;
     bool show_progress;
     int refinement;
-    bool use_correction;
     int EXPON;
     double STEP;
     char kktsolver[10]; // KKT solver name
 } ECVXConeSettings;
 
-
-static ECVXConeSettings ecvxcone_settings = {
-    .debug = false,
-    .kktreg = -1.0, // -1 indicates None/unset
-    .maxiters = 100,
-    // .abstol = 1e-7,  // Original default values
-    // .reltol = 1e-6,  // Original default values
-    // .feastol = 1e-7, // Original default values
-    .abstol = 1e-1, // Adjusted for better solving time
-    .reltol = 1e-1, // Adjusted for better solving time
-    .feastol = 1e-1, // Adjusted for better solving time
-    .show_progress = false,
-    .refinement = -1, // -1 indicates None/unset
-    .use_correction = true,
-    .EXPON = 3,
-    .STEP = 0.99,
-    .kktsolver = "chol" // Default KKT solver
-};
+extern ECVXConeSettings ecvxcone_settings;
 
 typedef struct {
     matrix *c; // Objective function coefficients
@@ -61,13 +38,7 @@ typedef struct {
     void *A; // Coefficient matrix for the constraints
 } ECVXConeData;
 
-static ECVXConeData ecvxcone_data = {
-    .c = NULL,
-    .b = NULL,
-    .h = NULL,
-    .G = NULL,
-    .A = NULL
-};
+extern ECVXConeData ecvxcone_data;
 
 // Primal start structure
 typedef struct {
@@ -83,7 +54,7 @@ typedef struct {
 
 // Result structure
 typedef struct {
-    char* status;
+    int status;
     matrix* x;
     matrix* s;
     matrix* y;
@@ -151,19 +122,6 @@ extern void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
 extern void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl);
 extern void misc_sinv(matrix *x, matrix *y, DIMs *dims, int mnl);
 
-/* base library */
-extern void base_gemv(void *A, matrix *x, matrix *y, char trans, void *alpha, void *beta, 
-              int m, int n, int incx, int incy, int offsetA, int offsetx, int offsety);
-
-/* blas library */
-extern void blas_copy(matrix *x, matrix *y, int n, int ix, int iy, int ox, int oy);
-extern void blas_axpy(matrix *x, matrix *y, number *alpha, int n, int incx, int incy, int offsetx, int offsety);
-extern void blas_scal(void* alpha, matrix* x, int n, int inc, int offset);
-extern number blas_dot(matrix *x, matrix *y, int n, int incx, int incy, int offsetx, int offsety);
-extern double blas_nrm2(matrix *x, int n, int inc, int offset);
-extern void blas_tbsv(matrix *A, matrix *x, char uplo, char trans, char diag, 
-          int n, int k, int ldA, int incx, int offsetA, int offsetx);
-
 /* dense library */
 extern matrix * dense(spmatrix *sp_mat);
 
@@ -181,7 +139,7 @@ static inline ECVXConeResult *ECVXConeResult_Init() {
     ECVXConeResult *result = (ECVXConeResult *)malloc(sizeof(ECVXConeResult));
     if (!result) err_no_memory;
 
-    result->status = NULL;
+    result->status = UNKNOWN;
     result->x = NULL;
     result->s = NULL;
     result->y = NULL;
@@ -202,7 +160,6 @@ static inline ECVXConeResult *ECVXConeResult_Init() {
 
 static inline void ECVXConeResult_Free(ECVXConeResult *result) {
     if (result) {
-        // if (result->status) free(result->status);
         if (result->x) Matrix_Free(result->x);
         if (result->s) Matrix_Free(result->s);
         if (result->y) Matrix_Free(result->y);
@@ -276,7 +233,7 @@ static inline void ECVXConeWorkspace_Free(ECVXConeWorkspace *ws)
         // Free any allocated resources within the workspace
         free(ws);
     }
-    return NULL;
+    return;
 }
 
 #endif

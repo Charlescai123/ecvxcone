@@ -1,13 +1,15 @@
 #define BASE_MODULE
 
-#include "cvxopt.h"
-#include "misc.h"
-#include "math.h"
+#include "base.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// Element size array for different types
+int E_SIZE[] = {sizeof(int), sizeof(double), sizeof(double complex)};
 
+// Constants for different types
+number One[] = {{.i=1}, {.d=1.0}, {.z=1.0+0.0*I}};
+number Zero[] = {{.i=0}, {.d=0.0}, {.z=0.0+0.0*I}};
+
+int intOne = 1;
 
 /***********************************************************************/
 /****                                                               ****/
@@ -118,21 +120,6 @@ extern void zsyrk_(char *, char *, int *, int *, void *, void *,
     int *, void *, void *, int *);
 void (*syrk_[])(char *, char *, int *, int *, void *, void *,
     int *, void *, void *, int *) = { NULL, dsyrk_, zsyrk_ };
-
-// extern int (*sp_symv[])(char, int, number, ccs *, int, void *, int,
-    // number, void *, int) ;
-
-// extern int (*sp_syrk[])(char, char, number, void *, number,
-    // void *, int, int, int, int, void **) ;
-
-// Element size array for different types
-const int E_SIZE[] = {sizeof(int), sizeof(double), sizeof(double complex)};
-
-// Constants for different types
-const number One[] = {{.i=1}, {.d=1.0}, {.z=1.0+0.0*I}};
-const number Zero[] = {{.i=0}, {.d=0.0}, {.z=0.0+0.0*I}};
-
-int intOne = 1;
 
 /* val_id: 0 = matrix, number = 1
  */
@@ -568,8 +555,7 @@ void base_gemm(void *A, void *B, void *C, char transA, char transB,
  * @see BLAS Level 3 SYRK documentation
  * @see Sparse BLAS extensions
  */
-void base_syrk(void *A, void *C, char uplo, char trans, 
-            void *alpha, void *beta, bool partial)
+void base_syrk(void *A, void *C, char uplo, char trans, void *alpha, void *beta, bool partial)
 {
     number a, b;
 
@@ -796,7 +782,11 @@ void* base_emul(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
 
         if (SP_ROW(A)[ka] < SP_ROW(B)[kb]) ka++;
         else if (SP_ROW(A)[ka] > SP_ROW(B)[kb]) kb++;
-        else SP_COL(ret)[j+1]++; ka++; kb++;
+        else {
+          SP_COL(ret)[j+1]++; 
+          ka++; 
+          kb++;
+        }
       }
 
       ka = SP_COL(A)[j+1];
@@ -1009,4 +999,239 @@ void* base_ediv(void* A, void* B, int A_type, int B_type, int A_id, int B_id)
 
   divzero:
   err_division_by_zero;
+}
+
+/**
+ * @brief Core power function for matrix and scalar exponentiation
+ * 
+ * @details
+ * Computes element-wise power operation A^exponent for:
+ * - Dense matrices with numeric exponents
+ * - Handles both real and complex-valued matrices and exponents
+ * - For real values, checks for domain errors (negative base with fractional exponent)
+ * - For complex values, checks for zero base with negative/imaginary exponent
+ *
+ * @param A           Input matrix to raise to power (must be dense matrix)
+ * @param exponent    Scalar exponent (int, float, or complex)
+ * @param A_type      The type of the input (not used here, but could be used
+ *                    for type checking). (0 - matrix/spmatrix, 1 - number)
+ * @param A_id        The ID of the input (not used here, but could be used
+ *                    for type checking). (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ * @param exp_id      Type identifier for exponent (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ *
+ * @return Pointer to new matrix containing result, or NULL on error
+ *         - Returned matrix type matches highest precision of inputs
+ *         - Must be freed with matrix_free()
+ */
+
+void* base_pow(void* A, void* exponent, int A_type, int A_id, int exp_id)
+{
+  if (exp_id != INT && exp_id != DOUBLE && exp_id != COMPLEX) {
+    ERR_TYPE("exponent must be a number");
+  }
+
+  if (!A) { // NULL
+    ERR("error: NULL input"); return NULL;
+  }
+
+  number val;
+  convert_num[MAX(DOUBLE, exp_id)](&val, exponent, 1, 0);  // Get value of exponent
+
+  int id = MAX(DOUBLE, MAX(A_id, exp_id));
+
+  if (A_type == 1) {
+    number* a = (number*) A;
+    number* res = malloc(sizeof(number));
+    if (!res) {
+      fprintf(stderr, "base_pow: memory allocation failed.\n");
+      return NULL;
+    }
+
+    if (id == INT || id == DOUBLE) {
+      double base = (A_id == INT) ? (double)a->i : a->d;
+      double exponent_val = (exp_id == INT) ? (double)(((number*)exponent)->i) : val.d;
+
+      if (base == 0.0 && exponent_val < 0.0) {
+          fprintf(stderr, "domain error: pow(0, negative)\n");
+          free(res);
+          return NULL;
+      }
+        res->d = pow(base, exponent_val);
+    }
+    else if (id == COMPLEX) {
+      double complex base = (A_id == COMPLEX) ? a->z :
+                            (A_id == DOUBLE)  ? a->d + 0.0*I :
+                                                a->i + 0.0*I;
+      double complex exponent_val = (exp_id == COMPLEX) ? val.z :
+                                    (exp_id == DOUBLE)  ? val.d + 0.0*I :
+                                                          val.i + 0.0*I;
+      if (creal(base) == 0.0 && cimag(base) == 0.0 &&
+          (cimag(exponent_val) != 0.0 || creal(exponent_val) < 0.0)) {
+          fprintf(stderr, "domain error: cpow(0, complex/negative)\n");
+          free(res);
+          return NULL;
+      }
+      res->z = cpow(base, exponent_val);
+    }
+    return res;
+  } else if (Matrix_Check(A)) {
+    matrix *Y = Matrix_NewFromMatrix((matrix *)A, id);
+    if (!Y) return NULL;
+
+    int i;
+    for (i=0; i<MAT_LGT(Y); i++) {
+      if (id == DOUBLE) {
+        if ((MAT_BUFD(Y)[i] == 0.0 && val.d < 0.0) ||
+            (MAT_BUFD(Y)[i] < 0.0 && val.d < 1.0 && val.d > 0.0)) {
+          ERR("domain error");
+        }
+
+        MAT_BUFD(Y)[i] = pow(MAT_BUFD(Y)[i], val.d);
+      } else {
+  #ifndef _MSC_VER
+        if (MAT_BUFZ(Y)[i] == 0.0 && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
+  #else
+        if ((creal(MAT_BUFZ(Y)[i]) == 0.0 && cimag(MAT_BUFZ(Y)[i]) == 0.0) && (cimag(val.z) != 0.0 || creal(val.z)<0.0)) {
+  #endif
+          ERR("domain error");
+        }
+        MAT_BUFZ(Y)[i] = cpow(MAT_BUFZ(Y)[i], val.z);
+      }
+    }
+
+    return (void *)Y;
+  }
+
+  fprintf(stderr, "base_pow: unsupported A_type=%d\n", A_type);
+  return NULL;
+}
+
+/**
+ * @brief Core exponential function for numeric types and matrices
+ * 
+ * @details
+ * Computes the exponential function for:
+ * - Scalar numbers (int, float, complex)
+ * - Dense matrices (element-wise operation)
+ * - Handles both real and complex numeric types
+ *
+ * @param A The input number or matrix.
+ * @param A_type The type of the input (not used here, but could be used
+ *               for type checking). (0 - matrix/spmatrix, 1 - number)
+ * @param A_id The ID of the input (not used here, but could be used
+ *             for type checking). (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ *
+ * @return A new number or matrix containing the exponential of the input.
+ */
+
+void* base_exp(void* A, int A_type, int A_id)
+{
+  if (A_type == 1) {  // number
+    number* a = (number*) A;
+    number* res = malloc(sizeof(number));
+    if (!res) err_no_memory;
+
+    if (A_id == INT || A_id == DOUBLE) {
+      res->d = exp(A_id == INT ? (double)a->i : a->d);
+    } else if (A_id == COMPLEX) {
+      res->z = cexp(a->z);
+    } else {
+        ERR("unsupported scalar type");
+    }
+      return res;
+  }
+  else if (Matrix_Check(A)) {  // matrix
+    matrix *ret = Matrix_New(MAT_NROWS(A),MAT_NCOLS(A),
+        (MAT_ID(A) == COMPLEX ? COMPLEX : DOUBLE));
+    if (!ret) return NULL;
+
+    int i;
+    if (MAT_ID(ret) == DOUBLE)
+      for (i=0; i<MAT_LGT(ret); i++)
+        MAT_BUFD(ret)[i] = exp(MAT_ID(A) == DOUBLE ? MAT_BUFD(A)[i] :
+        MAT_BUFI(A)[i]);
+    else
+      for (i=0; i<MAT_LGT(ret); i++)
+        MAT_BUFZ(ret)[i] = cexp(MAT_BUFZ(A)[i]);
+
+    return (void *)ret;
+  }
+  else ERR_TYPE("argument must a be a number or dense matrix");
+}
+
+
+/**
+ * \brief Computes the square root of a number or a matrix.
+ * @param A The input number or matrix.
+ * @param A_type The type of the input (not used here, but could be used
+ *               for type checking). (0 - matrix/spmatrix, 1 - number)
+ * @param A_id The ID of the input (not used here, but could be used
+ *             for type checking). (0 - INT, 1 - DOUBLE, 2 - COMPLEX)
+ * @return A new number or matrix containing the square root of the input.
+ */
+void* base_sqrt(void* A, int A_type, int A_id)
+{
+  if (!A) { // NULL
+    ERR("error: NULL input"); return NULL;
+  }
+  if (A_type == 1) { // number
+    number* ret = (number*)A;
+
+    if (A_id == DOUBLE) {    // DOUBLE
+      if (ret->d < 0.0) {
+        ERR("domain error: sqrt of negative real\n");
+        return NULL;
+      }
+      ret->d = sqrt(ret->d);
+      return ret;
+    } else if (A_id == INT) {    // INT
+      if (ret->i < 0) {
+        ERR("domain error: sqrt of negative int\n");
+        return NULL;
+      }
+      ret->i = sqrt(ret->i);
+      return ret;
+    } else if (A_id == COMPLEX) {
+      ret->z = csqrt(ret->z);
+      return ret;
+    } else {
+      fprintf(stderr, "invalid number id\n");
+      return NULL;
+    }
+  }
+  else if (Matrix_Check(A) && (MAT_ID(A) == INT || MAT_ID(A) == DOUBLE)) {
+    if (MAT_LGT(A) == 0)
+      return (matrix *)Matrix_New(MAT_NROWS(A),MAT_NCOLS(A),DOUBLE);
+
+    double val = (MAT_ID(A) == INT ? MAT_BUFI(A)[0] : MAT_BUFD(A)[0]);
+
+    int i;
+    for (i=1; i<MAT_LGT(A); i++) {
+      if (MAT_ID(A) == INT)
+        val = MIN(val,(MAT_BUFI(A)[i]));
+      else
+        val = MIN(val,(MAT_BUFD(A)[i]));
+    }
+
+    if (val >= 0.0) {
+      matrix *ret = Matrix_New(MAT_NROWS(A), MAT_NCOLS(A), DOUBLE);
+      if (!ret) return NULL;
+      for (i=0; i<MAT_LGT(A); i++)
+        MAT_BUFD(ret)[i] = sqrt((MAT_ID(A)== INT ?
+            MAT_BUFI(A)[i] : MAT_BUFD(A)[i]));
+      return ret;
+    }
+    else ERR("domain error");
+  }
+  else if (Matrix_Check(A) && MAT_ID(A) == COMPLEX) {
+    matrix *ret = Matrix_New(MAT_NROWS(A), MAT_NCOLS(A), COMPLEX);
+    if (!ret) return NULL;
+
+    int i;
+    for (i=0; i<MAT_LGT(A); i++)
+      MAT_BUFZ(ret)[i] = csqrt(MAT_BUFZ(A)[i]);
+
+    return ret;
+  }
+  else ERR_TYPE("argument must a be a number or dense matrix");
 }

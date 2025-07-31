@@ -7,8 +7,8 @@
 #include "misc.h"
 #include "solver.h"
 #include <sys/time.h>
-#include <unistd.h> // 包含 getcwd() 声明
-#include <limits.h> // 定义 PATH_MAX
+#include <unistd.h> 
+#include <limits.h>
 
 int TEST_TIMES = 1000;
 
@@ -37,13 +37,13 @@ extern void print_matrix(matrix *m);
 // const char mat_h[] = "input_matrix/simplified/h.txt";
 // const char spmat_G[] = "input_matrix/simplified/G_sp.txt";
 
-const char mat_c[] = "../tests/c/input_matrix/dpp/c.txt";        // For running
-const char mat_h[] = "../tests/c/input_matrix/dpp/h.txt";
-const char spmat_G[] = "../tests/c/input_matrix/dpp/G_sp.txt";
+// const char mat_c[] = "../tests/c/input_matrix/dpp/c.txt";        // For running
+// const char mat_h[] = "../tests/c/input_matrix/dpp/h.txt";
+// const char spmat_G[] = "../tests/c/input_matrix/dpp/G_sp.txt";
 
-// const char mat_c[] = "input_matrix/dpp/c.txt";        // For debugging
-// const char mat_h[] = "input_matrix/dpp/h.txt";
-// const char spmat_G[] = "input_matrix/dpp/G_sp.txt";
+const char mat_c[] = "input_matrix/dpp/c.txt";        // For debugging
+const char mat_h[] = "input_matrix/dpp/h.txt";
+const char spmat_G[] = "input_matrix/dpp/G_sp.txt";
 
 void test_all() {
     // test_base();
@@ -51,8 +51,7 @@ void test_all() {
     // test_lapack();
     // test_sparse();
     // test_misc_solvers();
-    test_conelp();  // 测试 conelp
-
+    test_conelp(); 
 }
 
 void test_conelp() {
@@ -97,10 +96,6 @@ void test_conelp() {
     gettimeofday(&start, NULL);
     for (int i = 0; i < test_time; ++i) {
         status = conelp(ecvxcone_ws, &ecvxcone_settings);
-        Matrix_Free(ecvxcone_ws->result->x);
-        // Matrix_Free(ecvxcone_ws->result->s);
-        // Matrix_Free(ecvxcone_ws->result->y);
-        // Matrix_Free(ecvxcone_ws->result->z);
     }
     gettimeofday(&end, NULL);
 

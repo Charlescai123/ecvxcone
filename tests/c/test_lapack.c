@@ -6,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 
+extern void print_matrix_(matrix *m);
+
 extern void lapack_potrf(matrix* A, char uplo, int n, int ldA, int offsetA);
 extern void lapack_gesvd(matrix *A, matrix *S, char jobu, char jobvt, matrix *U, matrix *Vt, int m, int n, 
                 int ldA, int ldU, int ldVt, int offsetA, int offsetS, int offsetU, int offsetVt);
@@ -14,6 +16,9 @@ extern void lapack_ormqr(matrix *A, matrix *tau, matrix *C, char side, char tran
 extern void lapack_geqrf(matrix *A, matrix *tau, int m, int n, int ldA, int offsetA);
 extern void lapack_trtrs(matrix *A, matrix *B, char uplo, char trans, char diag, 
                 int n, int nrhs, int ldA, int ldB, int oA, int oB);            
+extern void lapack_getrf(matrix* A, matrix* ipiv, int m, int n, int ldA, int offsetA);
+extern void lapack_getri(matrix* A, matrix* ipiv, int n, int ldA, int offsetA);
+
 extern matrix fill_random_matrix(int rows, int cols);
 
 extern matrix generate_lower_triangular_matrix(int n);
@@ -330,6 +335,29 @@ void test_lapack_trtrs() {
 
 }
 
+void test_lapack_inverse() {
+    matrix* A = Matrix_New(3, 3, DOUBLE);
+    double* A_data = MAT_BUFD(A);
+    A_data[0] = 4; A_data[3] = 7; A_data[6] = 2;
+    A_data[1] = 3; A_data[4] = 6; A_data[7] = 1;
+    A_data[2] = 2; A_data[5] = 5; A_data[8] = 3;
+    
+    matrix* ipiv = Matrix_New(3, 1, INT);  // pivot indices
+
+    print_matrix_(A);
+
+    // LU factorization
+    lapack_getrf(A, ipiv, A->nrows, A->ncols, A->nrows, 0);
+
+    // Inversion
+    lapack_getri(A, ipiv, A->nrows, A->nrows, 0);
+
+    print_matrix_(A);
+
+    Matrix_Free(A);
+    Matrix_Free(ipiv);
+}
+
 void test_lapack() {
     printf("==== Running test_lapack ====\n");
     // test_lapack_potrf();
@@ -340,5 +368,7 @@ void test_lapack() {
 
     // test_lapack_geqrf();
 
-    test_lapack_trtrs();
+    // test_lapack_trtrs();
+
+    test_lapack_inverse();
 }

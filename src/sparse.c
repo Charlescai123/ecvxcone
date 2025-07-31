@@ -23,6 +23,7 @@
 
 #include "cvxopt.h"
 #include "misc.h"
+#include "blas.h"
 
 #define CONJ(flag, val) (flag == 'C' ? conj(val) : val)
 
@@ -41,19 +42,13 @@ extern void (*gemm_[])(char *, char *, int *, int *, int *, void *,
 extern int (*div_array[])(void *, number, int) ;
 extern int get_id(void *, int ) ;
 
-// extern PyTypeObject matrix_tp ;
 extern matrix * Matrix_NewFromMatrix(matrix *, int) ;
-// extern matrix * Matrix_NewFromSequence(PyObject *, int) ;
-// extern matrix * Matrix_NewFromPyBuffer(PyObject *, int, int *) ;
 extern matrix * Matrix_NewFromNumber(int , int , int , void *, int ) ;
-// extern matrix * create_indexlist(int_t, PyObject *) ;
 extern matrix * Matrix_New(int, int, int) ;
 extern matrix * dense(spmatrix *) ;
-// extern PyObject * matrix_add(PyObject *, PyObject *) ;
-// extern PyObject * matrix_sub(PyObject *, PyObject *) ;
+
 extern void * convert_mtx_alloc(matrix *, int) ;
 
-// PyTypeObject spmatrix_tp ;
 spmatrix * SpMatrix_New(int_t, int_t, int_t, int ) ;
 
 extern void (*scal_[])(int *, number *, void *, int *) ;
