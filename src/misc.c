@@ -28,14 +28,6 @@
 #include "float.h"
 #include <unistd.h>
 
-extern matrix * Matrix_New(int, int, int);
-
-/* sparse library */
-extern ccs * transpose(ccs *A, int conjugate);
-
-/* dense library */
-extern matrix * dense(spmatrix *sp_mat);
-
 /**
  * @brief Compute jnrm2 for a second-order cone vector
  *
@@ -232,67 +224,6 @@ void misc_scale(matrix *x, scaling *W, char trans, char inverse)
     }
     free(wrk);
 }
-
-// Simplified BLAS implementations (basic versions for demonstration)
-// void dtbmv(const char *uplo, const char *trans, const char *diag, 
-//            int n, int k, const double *a, int lda, double *x, int incx) {
-//     // For simplicity, implement element-wise multiplication for k=0 case
-//     if (k == 0) {
-//         for (int i = 0; i < n; i++) {
-//             x[i * incx] *= a[i];
-//         }
-//     }
-// }
-
-// void dscal(int n, double alpha, double *x, int incx) {
-//     for (int i = 0; i < n; i++) {
-//         x[i * incx] *= alpha;
-//     }
-// }
-
-// void dgemv(const char *trans, int m, int n, double alpha, const double *a, 
-//            int lda, const double *x, int incx, double beta, double *y, int incy) {
-//     // Basic implementation for trans='T' case
-//     if (*trans == 'T') {
-//         for (int i = 0; i < n; i++) {
-//             double sum = 0.0;
-//             for (int j = 0; j < m; j++) {
-//                 sum += a[j * lda + i] * x[j * incx];
-//             }
-//             y[i * incy] = alpha * sum + beta * y[i * incy];
-//         }
-//     }
-// }
-
-// void dger(int m, int n, double alpha, const double *x, int incx, 
-//           const double *y, int incy, double *a, int lda) {
-//     for (int i = 0; i < m; i++) {
-//         for (int j = 0; j < n; j++) {
-//             a[i * lda + j] += alpha * x[i * incx] * y[j * incy];
-//         }
-//     }
-// }
-
-// void dcopy(int n, const double *x, int incx, double *y, int incy) {
-//     for (int i = 0; i < n; i++) {
-//         y[i * incy] = x[i * incx];
-//     }
-// }
-
-// void dtrmm(const char *side, const char *uplo, const char *transa, 
-//            const char *diag, int m, int n, double alpha, const double *a, 
-//            int lda, double *b, int ldb) {
-//     // Simplified implementation - would need full BLAS implementation
-//     // This is a placeholder for the triangular matrix multiplication
-// }
-
-// void dsyr2k(const char *uplo, const char *trans, int n, int k, double alpha, 
-//             const double *a, int lda, const double *b, int ldb, double beta, 
-//             double *c, int ldc) {
-//     // Simplified implementation - would need full BLAS implementation
-//     // This is a placeholder for the symmetric rank-2k update
-// }
-
 
 /**
  * @brief Multiplies with square root of the Hessian of the logarithmic barrier
@@ -1148,7 +1079,7 @@ double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl)
  */
 double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma)
 {
-    int i, mk, length, maxn, ind = mnl, ind2, int1 = 1, ld, Ns = 0, info, lwork,
+    int i, mk, length, maxn, ind = mnl, ind2, int1 = 1, ld, info, lwork,
         *iwork = NULL, liwork, iwl, m;
     
     double t = -FLT_MAX, dbl0 = 0.0, *work = NULL, wl, *Q = NULL, *w = NULL;
@@ -1610,7 +1541,6 @@ scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, i
 
         blas_copy(Ls, work, m*m, 1, 1, 0, 0);
         blas_trmm(Lz, work, 'L', 'L', 'T', 'N', NULL, m, m, m, m, 0, 0);
-                number temp_n;
 
         lapack_gesvd(work, lmbda, 'O', 'N', NULL, NULL, m, m, m, 0, 0, 0, ind, 0, 0);
 
@@ -1765,7 +1695,7 @@ void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z)
         double *z_data = (double *)z->buffer;
 
         // ln = sqrt( lambda_k' * J * lambda_k )
-        double ln = misc_jnrm2(lmbda, m, ind);
+        // double ln = misc_jnrm2(lmbda, m, ind);
 
         // a = sqrt( sk' * J * sk ) = sqrt( st' * J * st ) 
         // s := s / a = st / a
@@ -2108,7 +2038,6 @@ void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs
 
         blas_copy(Ls, work, m*m, 1, 1, 0, 0);
         blas_trmm(Lz, work, 'L', 'L', 'T', 'N', NULL, m, m, m, m, 0, 0);
-                number temp_n;
 
         lapack_gesvd(work, lmbda, 'O', 'N', NULL, NULL, m, m, m, 0, 0, 0, ind, 0, 0);
 

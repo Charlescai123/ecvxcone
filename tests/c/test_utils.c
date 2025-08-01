@@ -76,12 +76,12 @@ spmatrix create_test_spmatrix()
     data->ncols = 4;
     data->id = DOUBLE;
 
-    const int nnz = 7;  // 非零元素个数
+    const int nnz = 7;  // non-zero entries
     data->values = malloc(sizeof(double) * nnz);
     data->colptr = malloc(sizeof(int_t) * (data->ncols + 1));  // 5 entries
     data->rowind = malloc(sizeof(int_t) * nnz);
 
-    // values 按列主序填充
+    // values and indices
     double vals[] = {
         1.0, 2.0,  // col 0
         3.0, 4.0,  // col 1
@@ -107,7 +107,7 @@ spmatrix create_test_spmatrix()
 }
 
 void print_spmatrix(const spmatrix *sp) {
-    printf("Sparse matrix (%ld x %ld), printed as dense:\n", sp->obj->nrows, sp->obj->ncols);
+    printf("Sparse matrix (%d x %d), printed as dense:\n", sp->obj->nrows, sp->obj->ncols);
     int m = sp->obj->nrows;
     int n = sp->obj->ncols;
     double *dense = calloc(m * n, sizeof(double));
@@ -141,7 +141,7 @@ void print_matrix(matrix *m)
     }
 }
 
-// 生成下三角矩阵
+// Generate a lower triangular matrix of size n x n
 matrix generate_lower_triangular_matrix(int n) 
 {
     matrix A;
@@ -165,7 +165,7 @@ matrix generate_lower_triangular_matrix(int n)
     return A;
 }
 
-// 填充随机矩阵 B
+// Fill a random matrix B
 matrix fill_random_matrix(int rows, int cols) 
 {
     matrix B;
@@ -212,7 +212,7 @@ spmatrix* load_spmatrix_from_triplet_file(const char *filename, int nrows, int n
     // Step 1: Read i j v triplets
     int_t i, j;
     double v;
-    while (fscanf(fp, "%ld %ld %lf", &i, &j, &v) == 3) {
+    while (fscanf(fp, "%d %d %lf", &i, &j, &v) == 3) {
         if (nnz >= cap) {
             cap *= 2;
             data = realloc(data, cap * sizeof(triplet));

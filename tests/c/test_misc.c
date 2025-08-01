@@ -6,22 +6,15 @@
 #include <string.h>
 #include <time.h>
 
-extern scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int *mnl_ptr);
-extern void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z);
-extern double misc_jdot(matrix* x, matrix* y, int n, int offsetx, int offsety);
-extern void misc_unpack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety);
-extern void misc_pack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety);
-extern void misc_pack2(matrix *x, DIMs *dims, int mnl);
-extern matrix* load_txt_as_matrix(const char* filename);
-extern void misc_symm(matrix *x, int n, int offset);
-
-
 extern int TEST_TIMES;
 
-const char filepath1[] = "../tests/c/input_matrix/s.txt";        // For running
-const char filepath2[] = "../tests/c/input_matrix/z.txt";
+extern void print_matrix_(matrix *m);
+extern matrix* load_txt_as_matrix(const char* filename);
 
-// const char filepath1[] = "input_matrix/s.txt";      // For testing
+const char filepath1[] = "../tests/c/dummy_input/s.txt";        // For running
+const char filepath2[] = "../tests/c/dummpy_input/z.txt";
+
+// const char filepath1[] = "input_matrix/s.txt";      // For debugging
 // const char filepath2[] = "input_matrix/z.txt";
 
 void test_misc_jdot() {
@@ -50,14 +43,14 @@ void test_computing_scale() {
     int sbuf[] = { 10, 6, 20, 16, 10, 3, 6, 6 };
 
     DIMs dims = {.l = 0, .q_size = 0, .s_size = 8, .q = NULL, .s = sbuf};     
-    int mnl = 0;              // 起始索引为0
+    // int mnl = 0;              // Beginning index for packed entries
 
     // matrix *s = Matrix_New(973, 1, DOUBLE);
     // matrix *z = Matrix_New(973, 1, DOUBLE);
-    matrix *lmbda = Matrix_New(78, 1, DOUBLE);  // 如果不用可忽略
+    matrix *lmbda = Matrix_New(78, 1, DOUBLE);  // If not used, can be ignored
 
-    double sdata[3] = {4.0, 9.0, 16.0};
-    double zdata[3] = {1.0, 1.0, 4.0};
+    // double sdata[3] = {4.0, 9.0, 16.0};
+    // double zdata[3] = {1.0, 1.0, 4.0};
 
     for (int i = 0; i < 3; i++) {
         // ((double *)s->buffer)[i] = sdata[i];
@@ -70,12 +63,14 @@ void test_computing_scale() {
     matrix *s = load_txt_as_matrix(filepath1);
     matrix *z = load_txt_as_matrix(filepath2);
 
-    scaling *result2 = misc_compute_scaling(s, z, lmbda, &dims, NULL);
+    misc_compute_scaling(s, z, lmbda, &dims, 0);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
-    scaling *result;
+    scaling *result = (scaling *)malloc(sizeof(scaling));
+    Scaling_Init(result);
+
     for (int i = 0; i < TEST_TIMES; ++i)
-        result = misc_compute_scaling(s, z, lmbda, &dims, NULL);
+        result = misc_compute_scaling(s, z, lmbda, &dims, 0);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
     double elapsed = (end.tv_sec - start.tv_sec)
@@ -83,7 +78,7 @@ void test_computing_scale() {
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
     printf("Computed scaling.d:\n");
-    print_matrix(result->d);
+    print_matrix_(result->d);
 }
 
 
@@ -92,14 +87,14 @@ void test_updating_scale() {
     int sbuf[] = { 10, 6, 20, 16, 10, 3, 6, 6 };
 
     DIMs dims = {.l = 0, .q_size = 0, .s_size = 8, .q = NULL, .s = sbuf};     
-    int mnl = 0;              // 起始索引为0
+    // int mnl = 0;              // Beginning index for packed entries
 
     // matrix *s = Matrix_New(973, 1, DOUBLE);
     // matrix *z = Matrix_New(973, 1, DOUBLE);
-    matrix *lmbda = Matrix_New(78, 1, DOUBLE);  // 如果不用可忽略
+    matrix *lmbda = Matrix_New(78, 1, DOUBLE);  // If not used, can be ignored
 
-    double sdata[3] = {4.0, 9.0, 16.0};
-    double zdata[3] = {1.0, 1.0, 4.0};
+    // double sdata[3] = {4.0, 9.0, 16.0};
+    // double zdata[3] = {1.0, 1.0, 4.0};
 
     for (int i = 0; i < 3; i++) {
         // ((double *)s->buffer)[i] = sdata[i];
@@ -112,7 +107,7 @@ void test_updating_scale() {
     matrix *s = load_txt_as_matrix(filepath1);
     matrix *z = load_txt_as_matrix(filepath2);
 
-    scaling *result = misc_compute_scaling(s, z, lmbda, &dims, NULL);
+    scaling *result = misc_compute_scaling(s, z, lmbda, &dims, 0);
     misc_update_scaling(result, lmbda, s, z);
 
     struct timespec start, end;
@@ -127,7 +122,7 @@ void test_updating_scale() {
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
     printf("Updated scaling.d:\n");
-    print_matrix(result->d);
+    print_matrix_(result->d);
 }
 
 
@@ -221,10 +216,10 @@ void test_misc_pack2() {
         printf("x[%d] = %.6f\n", i, xbuf[i]);
     }
 
-    // 验证输出：
+    // Verify output:
     // x[0] = 1.0
     // x[1] = 2.0
-    // 原始 SDP: [3 4; 4 5] → packed = [3, 4, 5]（off-diag 4*√2 ≈ 5.656854）
+    // Original SDP: [3 4; 4 5] → packed = [3, 4, 5]（off-diag 4*√2 ≈ 5.656854）
     double expected[] = {
         1.0, 2.0,
         3.0,
@@ -298,13 +293,12 @@ void test_misc_unpack() {
 void test_misc_symm() {
     int n = 3;
 
-    // 构造下三角矩阵（列主序）
+    // Construct lower triangular matrix (column-major)
     double buf[9] = {
-        1.0, 2.0, 4.0,  // 第 0 列：A(0,0), A(1,0), A(2,0)
-        0.0, 3.0, 5.0,  // 第 1 列：A(1,1), A(2,1), A(2,2)
-        0.0, 0.0, 6.0   // 第 2 列（上三角）：将由函数填充
+        1.0, 2.0, 4.0,  // Column 0: A(0,0), A(1,0), A(2,0)
+        0.0, 3.0, 5.0,  // Column 1: A(1,1), A(2,1), A(2,2)
+        0.0, 0.0, 6.0   // Column 2 (upper triangular): to be filled by function
     };
-
 
     matrix X = {
         .nrows = n,
@@ -314,7 +308,7 @@ void test_misc_symm() {
         .id = DOUBLE
     };
 
-    // 调用函数补全对称矩阵
+    // Call function to complete symmetric matrix
     misc_symm(&X, n, 0);
 
     struct timespec start, end;
@@ -328,11 +322,11 @@ void test_misc_symm() {
                    + (end.tv_nsec - start.tv_nsec) / 1e9;
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
-    // 手动打印矩阵（列主序）
+    // Manually print matrix (column-major)
     printf("Symmetric matrix X:\n");
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
-            // 注意列主序访问方式
+            // Note column-major access pattern
             double val = buf[i + j * n];
             printf("%8.4f ", val);
         }
@@ -344,10 +338,10 @@ void test_misc_symm() {
 void test_misc_solvers() {
     printf("==== Running test_misc_solvers ====\n");
 
-    // 测试 jdot
+    // Test jdot
     // test_misc_jdot();
 
-    // 测试计算缩放因子
+    // Test computing scale
     test_computing_scale();
 
     test_updating_scale();

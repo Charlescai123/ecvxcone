@@ -318,7 +318,7 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             relgap = -1.0; // Represents None
         }
 
-        if ((ts <= 0 && tz <= 0 && (gap <= ABSTOL || (relgap > 0 && relgap <= RELTOL))) && (&KKTREG == NULL)) {
+        if ((ts <= 0 && tz <= 0 && (gap <= ABSTOL || (relgap > 0 && relgap <= RELTOL))) && (KKTREG == -1.0)) {
 
             // The initial points constructed happen to be feasible and optimal.
             ind = dims->l + sum_dims_q;

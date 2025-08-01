@@ -1,6 +1,7 @@
 #define BASE_MODULE
 
 #include "base.h"
+#include "cvxopt.h"
 
 // Element size array for different types
 int E_SIZE[] = {sizeof(int), sizeof(double), sizeof(double complex)};
@@ -16,21 +17,6 @@ int intOne = 1;
 /****                      BLAS 1 prototypes                        ****/
 /****                                                               ****/
 /***********************************************************************/
-
-/*************   sparse.c   *************/
-extern matrix * Matrix_New(int, int, int) ;
-extern matrix * Matrix_NewFromMatrix(matrix *, int) ;
-// matrix * Matrix_NewFromSequence(PyObject *, int) ;
-// matrix * Matrix_NewFromPyBuffer(PyObject *, int, int *) ;
-
-extern spmatrix * SpMatrix_New(int_t, int_t, int_t, int ) ;
-extern spmatrix * SpMatrix_NewFromMatrix(matrix *, int) ;
-extern spmatrix * SpMatrix_NewFromSpMatrix(spmatrix *, int) ;
-extern spmatrix * SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int) ;
-extern int get_id(void *val, int val_type);
-extern void free_ccs(ccs *obj);
-extern int number_from_raw(const void *src, number *a, int id);
-
 extern int (*sp_axpy[])(number, void *, void *, int, int, int, void **) ;
 
 extern int (*sp_gemm[])(char, char, number, void *, void *, number, void *,

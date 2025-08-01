@@ -29,7 +29,7 @@ extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB,
 extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans,  void* alpha, void* beta, 
                     int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
 
-extern test_sp_gemv();
+extern void test_sp_gemv();
 extern void print_matrix(matrix *m);
 
 extern int TEST_TIMES;
@@ -58,9 +58,9 @@ void test_blas_tbmv() {
 
 void test_blas_scal(){
     int n = 8;
-    double alpha_val = 2.0;
-    number alpha;
-    alpha.d = alpha_val;
+    // double alpha_val = 2.0;
+    // number alpha;
+    // alpha.d = alpha_val;
 
     matrix x;
     x.mat_type = MAT_DENSE;
@@ -258,8 +258,8 @@ void test_blas_trsv() {
         .mat_type = MAT_DENSE
     };
 
-    number alpha;
-    alpha.d = 1.0;
+    // number alpha;
+    // alpha.d = 1.0;
 
     blas_trsv(&A, &x, 'L', 'N', 'N', -1,
               0, 1, 0, 0);

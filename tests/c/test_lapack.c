@@ -56,19 +56,19 @@ void test_lapack_potrf() {
         .mat_type = MAT_DENSE
     };
 
-    int n = A.nrows;
-    int lda = A.nrows;
-    int info;
-    char uplo = 'L';  // 使用下三角
+    // int n = A.nrows;
+    // int lda = A.nrows;
+    int info = -1;  // Initialize info to -1 for error checking
+    char uplo = 'L';  // Use lower triangular part
 
-    // 调用 lapack_gesvd：A = U * S * V^T
+    // Call lapack_gesvd：A = U * S * V^T
     
     lapack_potrf(&B, uplo, 3, 3, 0);  // offset=0
     clock_t start, end;
     double elapsed;
-    start = clock();  // 开始计时
+    start = clock(); 
     lapack_potrf(&A, uplo, 3, 3, 0);  // offset=0
-    end = clock();  // 结束计时
+    end = clock(); 
     elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
     
@@ -77,7 +77,7 @@ void test_lapack_potrf() {
         return;
     }
 
-    // 打印结果矩阵（只打印 L，填充对称）
+    // Print the Cholesky factor L (A = L * L^T)
     printf("Cholesky factor L (A = L * L^T):\n");
     for (int i = 0; i < A.nrows; ++i) {
         for (int j = 0; j < A.ncols; ++j) {
@@ -103,7 +103,7 @@ void test_lapack_gesvd() {
         .mat_type = MAT_DENSE
     };
 
-    // 奇异值向量 S (min(m,n) = 2)
+    // Singular values S (min(m,n) = 2)
     double Sbuf[2] = {0};
     matrix S = {
         .id = DOUBLE,
@@ -131,31 +131,31 @@ void test_lapack_gesvd() {
         .mat_type = MAT_DENSE
     };
 
-    // 调用 lapack_gesvd：A = U * S * V^T
+    // Call lapack_gesvd：A = U * S * V^T
     lapack_gesvd(&A, &S, 'A', 'A', &U, &Vt,
-                 -1, -1, 0, 0, 0, 0, 0, 0, 0);  // 自动计算 m,n,ldX，offset=0
+                 -1, -1, 0, 0, 0, 0, 0, 0, 0);  // m,n,ldX，offset=0
 
     struct timespec start, end;
     double elapsed;
-    clock_gettime(CLOCK_MONOTONIC, &start);  // 获取开始时间
+    clock_gettime(CLOCK_MONOTONIC, &start);  
 
-    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
-        // 调用 LAPACK SVD：A = U * S * V^T
+    for(int i = 0; i < TEST_TIMES; ++i) {
+        // Call LAPACK SVD：A = U * S * V^T
         lapack_gesvd(&A, &S, 'A', 'A', &U, &Vt,
-                     -1, -1, 0, 0, 0, 0, 0, 0, 0);  // 自动计算 m,n,ldX，offset=0
+                     -1, -1, 0, 0, 0, 0, 0, 0, 0);  
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);  // 获取结束时间
+    clock_gettime(CLOCK_MONOTONIC, &end);  
     elapsed = (end.tv_sec - start.tv_sec)
-            + (end.tv_nsec - start.tv_nsec) / 1e9;  // 计算耗时
+            + (end.tv_nsec - start.tv_nsec) / 1e9; 
     printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
-    
-    // 打印奇异值 S
+
+    // Print Singular values S
     printf("Singular values:\n");
     for (int i = 0; i < 2; ++i)
         printf("  %.6f\n", Sbuf[i]);
 
-    // 打印左奇异向量 U (列向量形式)
+    // Print left singular vectors U (column vectors)
     printf("\nLeft singular vectors U (3x3):\n");
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j)
@@ -163,7 +163,7 @@ void test_lapack_gesvd() {
         printf("\n");
     }
 
-    // 打印右奇异向量 V^T (2x2)
+    // Print right singular vectors V^T (2x2)
     printf("\nRight singular vectors V^T (2x2):\n");
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j)
@@ -176,7 +176,7 @@ void test_lapack_geqrf() {
     printf("==== Running test_lapack_geqrf ====\n");
     int m = 3, n = 2, k = 2;
 
-    // ==== 初始化 A (3x2), 列主序 ====
+    // ==== Initialize A (3x2), column-major ====
     double Abuf[6] = {
         1.0, 3.0, 5.0,   // col 0
         2.0, 4.0, 6.0    // col 1
@@ -189,7 +189,7 @@ void test_lapack_geqrf() {
         .id = DOUBLE
     };
 
-    // ==== 初始化 tau (2,) ====
+    // ==== Initialize tau (2,) ====
     double tau_buf[2] = {0.0, 0.0};
     matrix tau = {
         .nrows = k,
@@ -199,20 +199,20 @@ void test_lapack_geqrf() {
         .id = DOUBLE
     };
 
-    // ==== 调用 lapack_geqrf ====
+    // ==== Call lapack_geqrf ====
     lapack_geqrf(&A, &tau, -1, -1, 0, 0);
 
-    // === 直接打印 A 内容 ===
+    // === Print A directly ===
     double *a = (double *) A.buffer;
     printf("QR-factorized A (R upper, reflectors lower):\n");
     for (int i = 0; i < A.nrows; ++i) {
         for (int j = 0; j < A.ncols; ++j) {
-            printf("%10.6f ", a[i + j * A.nrows]);  // 列主序访问
+            printf("%10.6f ", a[i + j * A.nrows]);  // visiting in column-major order
         }
         printf("\n");
     }
 
-    // === 打印 tau ===
+    // === Print tau ===
     printf("tau = [ ");
     for (int i = 0; i < 2; ++i)
         printf("%g ", tau_buf[i]);
@@ -225,7 +225,7 @@ void test_lapack_ormqr() {
 
     int m = 3, k = 2, n = 2;
 
-    // ==== 初始化 matrix A (3x2), 列主序 ====
+    // ==== Initialize matrix A (3x2), column-major ====
     double Abuf[6] = {
         1.0, 3.0, 5.0,   // col 0
         2.0, 4.0, 6.0    // col 1
@@ -238,7 +238,7 @@ void test_lapack_ormqr() {
         .id = DOUBLE
     };
 
-    // ==== 初始化 tau (2,) ====
+    // ==== Initialize tau (2,) ====
     double tau_buf[2] = {0.0, 0.0};
     matrix tau = {
         .nrows = 2,
@@ -248,7 +248,7 @@ void test_lapack_ormqr() {
         .id = DOUBLE
     };
 
-    // ==== 初始化 C (3x2)，列主序 ====
+    // ==== Initialize C (3x2), column-major ====
     double Cbuf[6] = {
         7.0, 9.0, 0.0,
         8.0, 10.0, 0.0
@@ -261,18 +261,18 @@ void test_lapack_ormqr() {
         .id = DOUBLE
     };
 
-    // ==== QR 分解 ====
+    // ==== QR factorization ====
     lapack_geqrf(&A, &tau, -1, -1, 0, 0);
 
-    // ==== Apply Q to C（左乘 Q）====
+    // ==== Apply Q to C (left-multiply Q) ====
     lapack_ormqr(&A, &tau, &C, 'L', 'N', -1, -1, -1, 0, 0, 0, 0);
 
-    // ==== 打印 C 的结果 ====
+    // ==== Print C's result ====
     double *c = (double *)C.buffer;
     printf("Q @ C =\n");
     for (int i = 0; i < C.nrows; ++i) {
         for (int j = 0; j < C.ncols; ++j) {
-            printf("%10.6f ", c[i + j * C.nrows]);  // 列主序访问
+            printf("%10.6f ", c[i + j * C.nrows]);  // visiting in column-major order
         }
         printf("\n");
     }
@@ -281,54 +281,54 @@ void test_lapack_ormqr() {
 void test_lapack_trtrs() {
     printf("==== Running test_lapack_trtrs ====\n");
 
-    // 解 A X = B，其中 A 为 3x3 下三角，B 为 3x2
+    // Solve A X = B，where A is 3x3 lower triangular, B is 3x2
     // A = [1 0 0; 2 3 0; 4 5 6]
     // B = [1 2; 3 4; 5 6]
-    double Abuf[9] = {
-        1.0, 2.0, 4.0,  // col 0
-        0.0, 3.0, 5.0,  // col 1
-        0.0, 0.0, 6.0   // col 2
-    };
+    // double Abuf[9] = {
+    //     1.0, 2.0, 4.0,  // col 0
+    //     0.0, 3.0, 5.0,  // col 1
+    //     0.0, 0.0, 6.0   // col 2
+    // };
     double Bbuf[6] = {
         1.0, 8.0, 32.0,  // col 0 (rhs 1)
         2.0, 13.0, 47.0   // col 1 (rhs 2)
     };
 
-    // 构造 matrix 结构体
+    // Construct matrix structures
     // matrix A = {.nrows = 3, .ncols = 3, .buffer = Abuf, .mat_type = MAT_DENSE, .id = DOUBLE};
     // matrix B = {.nrows = 3, .ncols = 2, .buffer = Bbuf, .mat_type = MAT_DENSE, .id = DOUBLE};
 
     matrix A = generate_lower_triangular_matrix(600);
-    matrix B = fill_random_matrix(600, 100);  // 生成随机矩阵 B (900x2)
+    matrix B = fill_random_matrix(600, 100);  // Generate random matrix B (600x100)
 
-    // 调用 LAPACK trtrs 解决 AX = B
+    // Call LAPACK trtrs to solve AX = B
     lapack_trtrs(&A, &B, 'L', 'N', 'N', 3, 2, 3, 3, 0, 0);
 
     struct timespec start, end;
 
-    // 获取开始时间
+    // Get start time
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    // 运行你要测量的函数
-    for(int i = 0; i < TEST_TIMES; ++i) {  // 多次调用以便测量时间
-        // 调用 LAPACK SVD：A = U * S * V^T
+    // Run the function you want to measure
+    for(int i = 0; i < TEST_TIMES; ++i) {  // Call multiple times to measure time
+        // Call LAPACK SVD: A = U * S * V^T
         lapack_trtrs(&A, &B, 'L', 'N', 'N', -1, -1, 0, 0, 0, 0);
     }
 
-    // 获取结束时间
+    // Get end time
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    // 计算耗时（单位：秒 + 纳秒）
+    // Calculate elapsed time (in seconds + nanoseconds)
     double elapsed = (end.tv_sec - start.tv_sec)
                    + (end.tv_nsec - start.tv_nsec) / 1e9;
 
     printf("Elapsed time: %.6f seconds\n", elapsed);
 
-    // 输出 B 中解 X
+    // Output the solution X (overwritten in B)
     printf("Solution X (overwritten in B):\n");
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 2; ++j) {
-            printf("%8.4f ", Bbuf[i + j * 3]);  // 列主序
+            printf("%8.4f ", Bbuf[i + j * 3]);  // Column-major order
         }
         printf("\n");
     }

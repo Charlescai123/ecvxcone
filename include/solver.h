@@ -11,9 +11,6 @@
 #define DUAL_INFEASIBLE 2
 #define UNKNOWN 3
 
-extern const char* defaultsolvers[];
-extern char msg[256];
-
 typedef struct {
     bool debug;
     double kktreg;
@@ -28,8 +25,6 @@ typedef struct {
     char kktsolver[10]; // KKT solver name
 } ECVXConeSettings;
 
-extern ECVXConeSettings ecvxcone_settings;
-
 typedef struct {
     matrix *c; // Objective function coefficients
     matrix *b; // Right-hand side vector for the constraints
@@ -38,7 +33,6 @@ typedef struct {
     void *A; // Coefficient matrix for the constraints
 } ECVXConeData;
 
-extern ECVXConeData ecvxcone_data;
 
 // Primal start structure
 typedef struct {
@@ -89,12 +83,16 @@ typedef struct {
     int *inds;     // Index array for 's' constraints
 
     scaling *W_init; // Scaling structure (identity) for initialization
-    scaling *W_nt; // Scaling structure for iterations
+    // scaling *W_nt; // Scaling structure for iterations
 
     ECVXConeData *data; // Data structure
     ECVXConeResult *result; // Result structure
 } ECVXConeWorkspace;
 
+extern const char* defaultsolvers[];
+extern ECVXConeSettings ecvxcone_settings;
+extern ECVXConeData ecvxcone_data;
+extern char msg[256];
 
 // Function declarations
 void Gf_gemv(matrix *x, matrix *y, void *G, DIMs *dims, char trans, void* alpha, void* beta);
@@ -105,22 +103,6 @@ void xy_copy(matrix *x, matrix *y);
 extern KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl);
 extern void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx, DIMs *dims);
 extern void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx, DIMs *dims);
-
-/* misc library */
-extern void misc_sgemv(void *A, matrix *x, matrix *y, DIMs *dims, char trans, double alpha, 
-                        double beta, int n, int offsetA, int offsetx, int offsety);
-extern void misc_scale(matrix *x, scaling *W, char trans, char inverse);
-extern void misc_scale2(matrix *lmbda, matrix *x, DIMs *dims, int mnl, char inverse);
-extern void misc_sprod(matrix *x, matrix *y, DIMs *dims, int mnl, char diag);
-extern double misc_snrm2(matrix *x, DIMs *dims, int mnl);
-extern double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma);
-extern double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl);
-extern void misc_symm(matrix *x, int n, int offset);
-extern scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
-extern void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
-extern void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z);
-extern void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl);
-extern void misc_sinv(matrix *x, matrix *y, DIMs *dims, int mnl);
 
 /* dense library */
 extern matrix * dense(spmatrix *sp_mat);
@@ -217,9 +199,6 @@ static inline void ECVXConeWorkspace_Free(ECVXConeWorkspace *ws)
 
         if(ws->W_init) {
             Scaling_Free(ws->W_init);
-        }
-        if(ws->W_nt) {
-            Scaling_Free(ws->W_nt);
         }
 
         if (ws->data) {

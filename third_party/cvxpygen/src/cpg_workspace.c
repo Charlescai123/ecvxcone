@@ -32677,7 +32677,7 @@ CPG_Result_t CPG_Result = {
 };
 
 // Struct containing ECVXCONE Cone dimensions
-s_buf[8] = {
+int s_buf[8] = {
 10,
 6,
 20,

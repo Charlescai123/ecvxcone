@@ -49,6 +49,16 @@
 // #define int_t  ptrdiff_t
 #define int_t  int
 
+// #ifndef NO_ANSI99_COMPLEX
+
+typedef union {
+    double d;
+    int_t i;
+    double complex z;
+} number;
+
+// #endif
+
 typedef struct {
   int  mat_type;        // MAT_DENSE
   void *buffer;         /* in column-major-mode array of type 'id' */
@@ -68,6 +78,19 @@ typedef struct {
   int mat_type;         // MAT_SPARSE
   ccs *obj;
 } spmatrix;
+
+/* Function prototypes for matrix/spmatrix operations */
+extern matrix *Matrix_New(int, int, int);
+extern matrix *Matrix_NewFromMatrix(matrix *, int);
+extern matrix *Matrix_NewFromList(void *, int);
+extern matrix *Matrix_New_Val(int, int, int, number);
+
+extern spmatrix *SpMatrix_New(int_t, int_t, int_t, int);
+extern spmatrix *SpMatrix_NewFromSpMatrix(spmatrix *, int);
+extern spmatrix *SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int);
+
+extern spmatrix * spmatrix_trans(spmatrix *A);
+extern void free_ccs(ccs *obj);
 
 static inline int is_matrix(void *ptr) {
     if (!ptr) return 0;

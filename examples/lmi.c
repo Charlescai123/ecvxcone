@@ -274,12 +274,12 @@ void print_matrix6x6(Matrix6x6 mat, const char *name) {
     printf("\n");
 }
 
-void benchmark(int iterations, bool verbose) {
+void benchmark(int iterations, bool verbose, double threshold) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < iterations; i++) {
         for (int j = 0; j < 10; j++) {
-            tracking_err[j] = ((double) rand() / RAND_MAX) * 0.1;  // Random tracking error
+            tracking_err[j] = ((double) rand() / RAND_MAX) * threshold;  // Random tracking error
         }
         // test_tracking_err();
         update_Matrices();  // Update matrices based on tracking error
@@ -306,13 +306,13 @@ int main() {
     print_matrix6x6(F_kp, "F_kp");
     print_matrix6x6(F_kd, "F_kd");
 
-    tracking_err[0] = -0.1;  // Test tracking error
+    tracking_err[0] = -0.123;  // Test tracking error
     update_Matrices();
     print_matrix6x6(F_kp, "F_kp");
     print_matrix6x6(F_kd, "F_kd");
 
     // Benchmark full update
-    benchmark(ITER, true);
+    // benchmark(ITER, true, 0.1);
 
     return 0;
 }

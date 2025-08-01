@@ -1,16 +1,17 @@
+#ifndef __LMI__
+#define __LMI__
+
 #define _POSIX_C_SOURCE 199309L
 #include <stdio.h>
-#include "lapack.h"
-#include "cvxopt.h"
 #include <math.h>
 #include <time.h>
+#include "lapack.h"
+#include "cvxopt.h"
 #include "cpg_solve.h"
 #include "cpg_workspace.h"
 
-extern ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings);
-extern Canon_Params_t Canon_Params_conditioning;
-
 extern CPG_Prim_t CPG_Prim;
+extern Canon_Params_t Canon_Params_conditioning;
 
 typedef double Matrix3x3[3][3];
 typedef double Matrix6x6[6][6];
@@ -47,6 +48,7 @@ static inline void matrix_multiply(Matrix3x3 A, Matrix3x3 B, Matrix3x3 result) {
 
 extern void lmi_init(); // Function to initialize LMI variables
 
+extern ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings);
 extern ECVXConeWorkspace* ecvxcone_init(matrix *c, spmatrix *G, matrix *h, spmatrix *A, matrix *b, DIMs *dims, ECVXConeSettings *settings);
 
 /********************************  Rotation Matrices  *******************************/
@@ -69,3 +71,5 @@ extern void blas_gemm(matrix *A, matrix *B, matrix *C, char transA, char transB,
 
 extern void blas_gemv(matrix *A, matrix *x, matrix *y, char trans, void* alpha, void* beta, 
             int m, int n, int ldA, int incx, int incy, int offsetA, int offsetx, int offsety);
+
+#endif // __LMI__

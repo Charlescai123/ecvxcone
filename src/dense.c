@@ -49,20 +49,10 @@ static char FMT_STR[][5] = {"q","d","Zd","i","l"};
 static char FMT_STR[][4] = {"l","d","Zd","i"};
 #endif
 
-// extern PyObject *base_mod;
-// extern PyTypeObject spmatrix_tp ;
-
-// PyTypeObject matrix_tp ;
 matrix * Matrix_New(int, int, int);
 matrix * Matrix_NewFromMatrix(matrix *, int);
-// matrix * Matrix_NewFromSequence(PyObject *, int);
 matrix * Matrix_NewFromNumber(int , int , int , void *, int ) ;
-// matrix * Matrix_NewFromPyBuffer(PyObject *, int, int *); 
 matrix * dense(spmatrix *);
-// matrix * dense_concat(PyObject *, int);
-// matrix * create_indexlist(int_t, PyObject *);
-// static PyNumberMethods matrix_as_number ;
-// static PyObject * matrix_iter(matrix *) ;
 
 
 void dscal_(int *, double *, double *, int *) ;

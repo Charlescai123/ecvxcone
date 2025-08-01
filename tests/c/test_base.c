@@ -149,13 +149,13 @@ void test_base_ediv() {
 
 void test_base_sqrt() {
     printf("==== Running test_base_sqrt ====\n");
-    number n1 = {.i = 16}; // INT
-    number n2 = {.d = 25.0}; // DOUBLE
-    number n3 = {.z = 3.0 + 4.0*I}; // COMPLEX
+    // number n1 = {.i = 16}; // INT
+    // number n2 = {.d = 25.0}; // DOUBLE
+    // number n3 = {.z = 3.0 + 4.0*I}; // COMPLEX
 
-    number* r1 = (number*)base_sqrt(&n1, 1, INT);
-    number* r2 = (number*)base_sqrt(&n2, 1, DOUBLE);
-    number* r3 = (number*)base_sqrt(&n3, 1, COMPLEX);
+    // number* r1 = (number*)base_sqrt(&n1, 1, INT);
+    // number* r2 = (number*)base_sqrt(&n2, 1, DOUBLE);
+    // number* r3 = (number*)base_sqrt(&n3, 1, COMPLEX);
 
     // Construct a 2x2 matrix A
     double Abuf[] = {
@@ -177,7 +177,7 @@ void test_base_sqrt() {
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
-    matrix* C;
+    // matrix* C;
 
     for (size_t i = 0; i < TEST_TIMES; i++)
     {

@@ -21,29 +21,22 @@ find_package(LAPACK REQUIRED)
 
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
 
-
 # Add the ECVXCONE headers
 set(ecvxcone_headers
     "${CMAKE_CURRENT_SOURCE_DIR}/include/cvxopt.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lapack.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/misc.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/blas.h"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/include/lmi.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/include/cpg_solve.h"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/include/cpg_workspace.h"
 )
 
 # Add the ECVXCONE sources
 set(ecvxcone_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/src/base.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/blas.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/src/cpg_solve.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/src/cpg_workspace.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/debug.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/dense.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lapack.c"
-    # "${CMAKE_CURRENT_SOURCE_DIR}/src/lmi.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/misc.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/solver.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/sparse.c"
@@ -98,5 +91,6 @@ if(BUILD_TESTS)
     target_include_directories(test_main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include) 
 
     target_link_libraries(test_main ${PROJECT_NAME})
+    
 endif()
 

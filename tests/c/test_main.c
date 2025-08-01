@@ -19,31 +19,12 @@ extern ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, 
 extern void ecvxcone_free(ECVXConeWorkspace *ecvxcone_ws);
 extern int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings);
 
-extern void print_matrix(matrix *m);
+extern void print_matrix_(matrix *m);
+void test_conelp();
 
-// const char mat_c[] = "../tests/c/input_matrix/c.txt";        // For running
-// const char mat_h[] = "../tests/c/input_matrix/h.txt";
-// const char spmat_G[] = "../tests/c/input_matrix/G_sp.txt";
-
-// const char mat_c[] = "input_matrix/c.txt";        // For debugging
-// const char mat_h[] = "input_matrix/h.txt";
-// const char spmat_G[] = "input_matrix/G_sp.txt";
-
-// const char mat_c[] = "../tests/c/input_matrix/simplified/c.txt";        // For running
-// const char mat_h[] = "../tests/c/input_matrix/simplified/h.txt";
-// const char spmat_G[] = "../tests/c/input_matrix/simplified/G_sp.txt";
-
-// const char mat_c[] = "input_matrix/simplified/c.txt";        // For debugging
-// const char mat_h[] = "input_matrix/simplified/h.txt";
-// const char spmat_G[] = "input_matrix/simplified/G_sp.txt";
-
-// const char mat_c[] = "../tests/c/input_matrix/dpp/c.txt";        // For running
-// const char mat_h[] = "../tests/c/input_matrix/dpp/h.txt";
-// const char spmat_G[] = "../tests/c/input_matrix/dpp/G_sp.txt";
-
-const char mat_c[] = "input_matrix/dpp/c.txt";        // For debugging
-const char mat_h[] = "input_matrix/dpp/h.txt";
-const char spmat_G[] = "input_matrix/dpp/G_sp.txt";
+const char mat_c_path[] = "../tests/c/dummy_input/c.txt";        // For running
+const char mat_h_path[] = "../tests/c/dummy_input/h.txt";
+const char spmat_G_path[] = "../tests/c/dummy_input/G_sp.txt";
 
 void test_all() {
     // test_base();
@@ -56,15 +37,13 @@ void test_all() {
 
 void test_conelp() {
     printf("==== Running test_conelp ====\n");
-    // 这里可以添加对 conelp 的测试代码
-    // 例如调用 conelp_solve 函数等
-    matrix *c = load_txt_as_matrix(mat_c);
-    matrix *h = load_txt_as_matrix(mat_h);
-    spmatrix *G_sp = load_spmatrix_from_triplet_file(spmat_G, 973, 136);
-    // spmatrix *G_sp = load_spmatrix_from_triplet_file(spmat_G, 89, 21);
+
+    matrix *c = load_txt_as_matrix(mat_c_path);
+    matrix *h = load_txt_as_matrix(mat_h_path);
+    spmatrix *G_sp = load_spmatrix_from_triplet_file(spmat_G_path, 973, 136);
 
     if (!c || !h || !G_sp) {
-        fprintf(stderr, "加载矩阵失败\n");
+        fprintf(stderr, "Failed to load matrices\n");
         return;
     }
 
@@ -76,26 +55,26 @@ void test_conelp() {
     // int sbuf[] = { 4, 2, 8, 1, 2};
     // DIMs dims = {.l = 0, .q_size = 0, .s_size = 5, .q = NULL, .s = sbuf};     
     DIMs dims = {.l = 0, .q_size = 0, .s_size = 8, .q = NULL, .s = sbuf};     
-    PrimalStart *primalstart = NULL;
-    DualStart *dualstart = NULL;    
+    // PrimalStart *primalstart = NULL;
+    // DualStart *dualstart = NULL;    
 
     ECVXConeWorkspace *ecvxcone_ws = ecvxcone_init(c, G_sp, h, A, b, &dims, &ecvxcone_settings);
 
-    int status;
-    status = conelp(ecvxcone_ws, &ecvxcone_settings);
-
-    print_matrix_(ecvxcone_ws->result->x, "Result x");
+    conelp(ecvxcone_ws, &ecvxcone_settings);
+    
+    printf("Result x:\n");
+    print_matrix_(ecvxcone_ws->result->x);
     // print_matrix_(ecvxcone_ws->result->s, "Result s");
     // print_matrix_(ecvxcone_ws->result->y, "Result y");
     // print_matrix_(ecvxcone_ws->result->z, "Result z");
-    printf("ConeLPResult status: %s\n", ecvxcone_ws->result->status);
+    printf("ConeLPResult status: %d\n", ecvxcone_ws->result->status);
 
     // int test_time = 1;
     int test_time = TEST_TIMES;
     struct timeval start, end;
     gettimeofday(&start, NULL);
     for (int i = 0; i < test_time; ++i) {
-        status = conelp(ecvxcone_ws, &ecvxcone_settings);
+        conelp(ecvxcone_ws, &ecvxcone_settings);
     }
     gettimeofday(&end, NULL);
 
@@ -103,13 +82,13 @@ void test_conelp() {
                    + (end.tv_usec - start.tv_usec) / 1e6;
     double avg_time = elapsed / test_time * 1e3;
     printf("Average time per iteration (Running %d times): %.6f milliseconds\n", test_time, avg_time);
-    printf("ConeLPResult status: %s\n", ecvxcone_ws->result->status);
+    printf("ConeLPResult status: %d\n", ecvxcone_ws->result->status);
 
     // Matrix_Free(c);
     // Matrix_Free(h);
     // Matrix_Free(b);
-    // SpMatrix_Free(A);           // 如果你用的是 dense matrix
-    // SpMatrix_Free(G_sp);      // 如果 A 是 sparse matrix，这一行换掉 Matrix_Free(A)
+    // SpMatrix_Free(A);         
+    // SpMatrix_Free(G_sp);  
 
     // ECVXConeWorkspace_Free(ecvxcone_ws);
 }
@@ -120,7 +99,6 @@ void test_matrix_assign() {
     matrix *src = Matrix_New(4, 4, DOUBLE);
     matrix *dst = Matrix_New(4, 4, DOUBLE);
 
-    // 填充 src 为如下内容（列主序）:
     // [ 1  5  9 13
     //   2  6 10 14
     //   3  7 11 15
@@ -130,13 +108,13 @@ void test_matrix_assign() {
         data[i] = i + 1;
 
     printf("Source matrix:\n");
-    print_matrix(src);
+    print_matrix_(src);
 
-    // 执行拷贝：src 整体赋值给 dst 的 (0:4, 0:4)
+    // Copy: src to dst (0:4, 0:4)
     matrix_slice_assign(dst, src, 0, 4, 0, 4);
 
     printf("\nDestination matrix after assignment:\n");
-    print_matrix(dst);
+    print_matrix_(dst);
 
     Matrix_Free(src);
     Matrix_Free(dst);
@@ -145,38 +123,38 @@ void test_matrix_assign() {
 
 int main() {
 
-    char cwd[PATH_MAX]; // PATH_MAX 是系统定义的最大路径长度
+    char cwd[PATH_MAX];
     
     if (getcwd(cwd, sizeof(cwd))) {
-        printf("当前工作目录: %s\n", cwd);
+        printf("Current working directory: %s\n", cwd);
     } else {
-        perror("getcwd() 错误");
+        perror("getcwd() error");
         return 1;
     }
 
-    // 开始计时
+    // Start timing
     // clock_t start, end;
-    // double elapsed;  start = clock();  // 开始计时
+    // double elapsed;  start = clock();  // Start timing
 
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
-    test_all();  // 执行所有测试
-    // test_matrix_assign();  // 测试 matrix_assign
-    // test_number_sqrt();  // 测试 number_sqrt
-    // test_base_emul();  // 测试 base_emul
-    // test_base_ediv();  // 测试 base_ediv
-    
-    // 结束计时
-    // end = clock();  // 结束计时
+    test_all();  // Run all tests
+    // test_matrix_assign();  // Test matrix_assign
+    // test_number_sqrt();  // Test number_sqrt
+    // test_base_emul();  // Test base_emul
+    // test_base_ediv();  // Test base_ediv
+
+    // End timing
+    // end = clock();  // End timing
 
     // elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     // printf("⏱️ Elapsed time: %.6f seconds\n", elapsed);
 
     gettimeofday(&end, NULL);
 
-    double elapsed = (end.tv_sec - start.tv_sec)
-                   + (end.tv_usec - start.tv_usec) / 1e6;
+    // double elapsed = (end.tv_sec - start.tv_sec)
+    //                + (end.tv_usec - start.tv_usec) / 1e6;
     // printf("Elapsed time: %.6f seconds\n", elapsed);
     
     return 0;

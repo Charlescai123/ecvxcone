@@ -36,7 +36,8 @@ ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A
                                         PrimalStart *primalstart, DualStart *dualstart, DIMs *dims);
 ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
                                 ECVXConeSettings* settings);
-
+scaling *init_identity_scaling(DIMs *dims);
+scaling *init_nt_scaling(DIMs *dims);
 
 /**
  * Initialize the CVXConeResult structure.
@@ -94,7 +95,12 @@ void validate_ecvxcone_settings(DIMs *dims, ECVXConeSettings *stgs)
     validate_kktsolver(dims, stgs->kktsolver);
 }
 
-/* Validate the KKT solver settings */
+/**
+ * Validate the cone dimensions.
+ * This function checks if the dimensions of the cones are valid and raises errors if they are not.
+ *
+ * @param dims Pointer to the DIMs structure containing the cone dimensions.
+ */
 void validate_kktsolver(DIMs* dims, const char* kktsolver) 
 {
     // Default solver selection
@@ -419,7 +425,7 @@ ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A
     }
 
     // Initialize scaling structure for iterations
-    ecvxcone_ws->W_nt = init_nt_scaling(dims);
+    // ecvxcone_ws->W_nt = init_nt_scaling(dims);
 
     return ecvxcone_ws;
 }

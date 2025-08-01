@@ -8,21 +8,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <string.h>
-
 #include "cvxopt.h"
 #include "math.h"
-
-// #ifndef NO_ANSI99_COMPLEX
-
-typedef union {
-    double d;
-    int_t i;
-    double complex z;
-} number;
-
-// #endif
 
 /*
 - dims['l'] = ml, the dimension of the nonnegative orthant C_0.
@@ -77,18 +65,6 @@ typedef struct {
     scaling *W;  // Scaling structure
 } KKTCholContext;
 
-/* Function prototypes for matrix operations */
-matrix *Matrix_New(int, int, int);
-matrix *Matrix_NewFromMatrix(matrix *, int);
-matrix *Matrix_NewFromList(void *, int);
-matrix *Matrix_New_Val(int, int, int, number);
-
-spmatrix *SpMatrix_New(int_t, int_t, int_t, int);
-spmatrix *SpMatrix_NewFromSpMatrix(spmatrix *, int);
-spmatrix *SpMatrix_NewFromIJV(matrix *, matrix *, matrix *, int_t, int_t, int);
-
-spmatrix * spmatrix_trans(spmatrix *A);
-
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
@@ -129,6 +105,32 @@ spmatrix * spmatrix_trans(spmatrix *A);
 #define X_Matrix_Check(O) (Matrix_Check(O) || SpMatrix_Check(O))
 
 #define len(x) (Matrix_Check(x) ? MAT_LGT(x) : SP_LGT(x))
+
+/* Declarations of misc functions */
+extern double misc_jnrm2(matrix* x, int n, int offset);
+extern void misc_scale(matrix *x, scaling *W, char trans, char inverse);
+extern void misc_scale2(matrix *lmbda, matrix *x, DIMs *dims, int mnl, char inverse);
+extern void misc_symm(matrix *x, int n, int offset);
+extern void misc_sprod(matrix *x, matrix *y, DIMs *dims, int mnl, char diag);
+extern double misc_sdot(matrix *x, matrix *y, DIMs *dims, int mnl);
+extern double misc_max_step(matrix* x, DIMs* dims, int mnl, matrix* sigma);
+extern double misc_snrm2(matrix *x, DIMs *dims, int mnl);
+extern void misc_ssqr(matrix *x, matrix *y, DIMs *dims, int mnl);
+extern double misc_jdot(matrix* x, matrix* y, int n, int offsetx, int offsety);
+extern scaling* misc_compute_scaling(matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
+extern void misc_update_scaling(scaling *W, matrix *lmbda, matrix *s, matrix *z);
+extern void misc_compute_scaling2(scaling *W, matrix *s, matrix *z, matrix *lmbda, DIMs *dims, int mnl);
+extern void solve_function(matrix *x, matrix *y, matrix *z, KKTCholContext *ctx, DIMs *dims);
+extern void factor_function(scaling *W, matrix *H, matrix *Df, KKTCholContext *ctx, DIMs *dims);
+extern KKTCholContext* kkt_chol(void *G, DIMs *dims, void *A, int mnl);
+extern void misc_pack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety);
+extern void misc_pack2(matrix *x, DIMs *dims, int mnl);
+extern void misc_unpack(matrix *x, matrix *y, DIMs *dims, int mnl, int offsetx, int offsety);
+extern void misc_sgemv(void *A, matrix *x, matrix *y, DIMs *dims, char trans, double alpha, 
+                double beta, int n, int offsetA, int offsetx, int offsety);
+extern void misc_trisc(matrix *x, DIMs *dims, int offset);
+extern void misc_triusc(matrix *x, DIMs *dims, int offset);
+extern void misc_sinv(matrix *x, matrix *y, DIMs *dims, int mnl);
 
 // Function pointer for converting numbers
 extern void (*write_num[])(void *, int, void *, int);
