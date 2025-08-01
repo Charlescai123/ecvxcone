@@ -9,9 +9,9 @@ ECVXConeSettings ecvxcone_settings = {
     // .abstol = 1e-7,  // Original default values
     // .reltol = 1e-6,  // Original default values
     // .feastol = 1e-7, // Original default values
-    .abstol = 1e-1, // Adjusted for better solving time
-    .reltol = 1e-1, // Adjusted for better solving time
-    .feastol = 1e-1, // Adjusted for better solving time
+    .abstol = 1e-2, // Adjusted for better solving time
+    .reltol = 1e-2, // Adjusted for better solving time
+    .feastol = 1e-3, // Adjusted for better solving time
     .show_progress = false,
     .refinement = -1, // -1 indicates None/unset
     .EXPON = 3,
@@ -37,7 +37,6 @@ ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A
 ECVXConeWorkspace* ecvxcone_init(matrix *c, void *G, matrix *h, void *A, matrix *b, DIMs *dims, 
                                 ECVXConeSettings* settings);
 scaling *init_identity_scaling(DIMs *dims);
-scaling *init_nt_scaling(DIMs *dims);
 
 /**
  * Initialize the CVXConeResult structure.
@@ -309,38 +308,6 @@ scaling *init_identity_scaling(DIMs *dims)
     return W_init;
 }
 
-/**
- * Initialize the scaling structure for iterations.
- * This function sets up the scaling structure for iterations based on the dimensions.
- *
- * @param dims Pointer to the DIMs structure containing the dimensions.
- * @return Pointer to the initialized scaling structure for iterations.
- */
-scaling *init_nt_scaling(DIMs *dims) 
-{
-    scaling *W_nt = malloc(sizeof(scaling));
-    Scaling_Init(W_nt);
-
-    W_nt->v_count = dims->q_size;
-    W_nt->v = (matrix**)malloc(dims->q_size * sizeof(matrix*));
-    for (int k = 0; k < dims->q_size; ++k) {
-        W_nt->v[k] = Matrix_New(dims->q[k], 1, DOUBLE);
-    }
-
-    W_nt->b_count = dims->q_size;
-    W_nt->beta = (double*)calloc(dims->q_size, sizeof(double));
-
-    W_nt->r_count = dims->s_size;
-    W_nt->r = (matrix**)malloc(dims->s_size * sizeof(matrix*));
-    W_nt->rti = (matrix**)malloc(dims->s_size * sizeof(matrix*));
-
-    for (int k = 0; k < dims->s_size; ++k) {
-        W_nt->r[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
-        W_nt->rti[k] = Matrix_New(dims->s[k], dims->s[k], DOUBLE);
-    }
-
-    return W_nt;
-}
 
 /**
  * Initialize the ECVXConeWorkspace structure.
@@ -423,9 +390,6 @@ ECVXConeWorkspace *ECVXConeWorkspace_Init(matrix *c, void *G, matrix *h, void *A
     } else {
         ecvxcone_ws->W_init = NULL; // No dummy scaling structure needed
     }
-
-    // Initialize scaling structure for iterations
-    // ecvxcone_ws->W_nt = init_nt_scaling(dims);
 
     return ecvxcone_ws;
 }

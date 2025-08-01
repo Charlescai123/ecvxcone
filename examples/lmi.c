@@ -25,7 +25,7 @@ void test_tracking_err() {
 /**
  * Setup the ECVXConeWorkspace structure.
  */
-ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings)
+ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings)
 {
     // c
     if (Canon_Params_conditioning.c == NULL) {
@@ -301,7 +301,7 @@ int main() {
 
     lmi_init();  // Initialize LMI structures
 
-    test_tracking_err();  // Test tracking error
+    // test_tracking_err();  // Test tracking error
     update_Matrices();
     print_matrix6x6(F_kp, "F_kp");
     print_matrix6x6(F_kd, "F_kd");
@@ -312,7 +312,7 @@ int main() {
     print_matrix6x6(F_kd, "F_kd");
 
     // Benchmark full update
-    // benchmark(ITER, true, 0.1);
+    benchmark(ITER, true, 0.1);
 
     return 0;
 }

@@ -52,7 +52,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # CVXPYGEN sources
 file(GLOB CVXPYGEN_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cvxpygen/src/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cvxpygen/ECVXCONE/c/src/cpg_solve.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cvxpygen/ECVXCONE/c/src/cpg_workspace.c
 )
 
 # Set the executable for example usage
@@ -64,7 +65,7 @@ add_executable(lmi
 target_include_directories(lmi PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/"
     "${CMAKE_CURRENT_SOURCE_DIR}/examples/include/"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cvxpygen/include/"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cvxpygen/ECVXCONE/c/include/"
 )
 
 # target_compile_definitions(${PROJECT_NAME} PRIVATE BLAS_NO_UNDERSCORE)

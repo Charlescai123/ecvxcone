@@ -48,7 +48,7 @@ static inline void matrix_multiply(Matrix3x3 A, Matrix3x3 B, Matrix3x3 result) {
 
 extern void lmi_init(); // Function to initialize LMI variables
 
-extern ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_eq, int n_ineq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings);
+extern ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings);
 extern ECVXConeWorkspace* ecvxcone_init(matrix *c, spmatrix *G, matrix *h, spmatrix *A, matrix *b, DIMs *dims, ECVXConeSettings *settings);
 
 /********************************  Rotation Matrices  *******************************/

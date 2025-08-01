@@ -7,15 +7,19 @@ void f6(matrix* x_, matrix* y_, matrix* z_, matrix* tau, matrix* s_, matrix* kap
         matrix *c, matrix *b, matrix *h, void *G, void *A, DIMs *dims,  scaling *W, 
         KKTCholContext *kkt_ctx, int cdim_diag, double dg, double dgi, int iters, 
         int REFINEMENT, int DEBUG);
+void f6_no_ir(matrix* x_, matrix* y_, matrix* z_, matrix* tau, matrix* s_, matrix* kappa, matrix *c, 
+              matrix *b, DIMs *dims, scaling *W, KKTCholContext *kkt_ctx, int cdim_diag, double dgi);
+void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *ukappa, 
+         matrix *vx, matrix *vy, matrix *vz, matrix *vtau, matrix *vs, matrix *vkappa, 
+         matrix *c, matrix *b, matrix *h, void* G, void* A, DIMs *dims, scaling *W, 
+         double dg, int cdim_diag);
+void Af_gemv(matrix *x_, matrix *y_, void *A, char trans, void* alpha, void* beta);
+void Gf_gemv(matrix *x_, matrix *y_, void *G, DIMs *dims, char trans, void* alpha, void* beta); 
+void xy_copy(matrix *x, matrix *y);
 
 // const char* defaultsolvers[] = {"ldl", "ldl2", "qr", "chol", "chol2"};
 const char* defaultsolvers[] = {"chol"};
-// static const double const_one = 1.0;
-// static const double const_zero = 0.0;
 char msg[256];
-
-// static KKTCholContext *kkt_ctx = NULL;
-// static scaling *W = NULL;
 
 // Primal and dual variables
 matrix *x = NULL;     // Primal variable (decision variable)
@@ -1087,7 +1091,8 @@ void Gf_gemv(matrix *x_, matrix *y_, void *G, DIMs *dims, char trans, void* alph
     misc_sgemv(G, x_, y_, dims, trans, *(double*)alpha, *(double*)beta, -1, 0, 0, 0);
 }
 
-void Af_gemv(matrix *x_, matrix *y_, void *A, char trans, void* alpha, void* beta) {
+void Af_gemv(matrix *x_, matrix *y_, void *A, char trans, void* alpha, void* beta) 
+{
     if (!x_ || !y_ || !A)  ERR("Error: Af_gemv requires non-null x, y, and A matrices\n");
 
     if (alpha == NULL) {
@@ -1116,7 +1121,8 @@ void Af_gemv(matrix *x_, matrix *y_, void *A, char trans, void* alpha, void* bet
 void res(matrix *ux, matrix *uy, matrix *uz, matrix *utau, matrix *us, matrix *ukappa, 
          matrix *vx, matrix *vy, matrix *vz, matrix *vtau, matrix *vs, matrix *vkappa, 
          matrix *c, matrix *b, matrix *h, void* G, void* A, DIMs *dims, scaling *W, 
-         double dg, int cdim_diag){
+         double dg, int cdim_diag)
+{
 
     double alpha = -1.0;
     double beta = 1.0;

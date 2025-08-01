@@ -83,7 +83,6 @@ typedef struct {
     int *inds;     // Index array for 's' constraints
 
     scaling *W_init; // Scaling structure (identity) for initialization
-    // scaling *W_nt; // Scaling structure for iterations
 
     ECVXConeData *data; // Data structure
     ECVXConeResult *result; // Result structure
