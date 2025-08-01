@@ -301,7 +301,7 @@ int main() {
 
     lmi_init();  // Initialize LMI structures
 
-    // test_tracking_err();  // Test tracking error
+    test_tracking_err();  // Test tracking error
     update_Matrices();
     print_matrix6x6(F_kp, "F_kp");
     print_matrix6x6(F_kd, "F_kd");

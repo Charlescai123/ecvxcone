@@ -109,48 +109,48 @@ if __name__ == "__main__":
     zz_param.value = tracking_err ** 2
     
     # Solve the problem
-    problem.solve(solver=solver, verbose=True)
+    # problem.solve(solver=solver, verbose=True)
     
-    if problem.status == 'optimal':
-        logging.info("Optimization successful.")
+    # if problem.status == 'optimal':
+    #     logging.info("Optimization successful.")
 
-        optimal_Q = Q.value
-        optimal_R = R.value
+    #     optimal_Q = Q.value
+    #     optimal_R = R.value
 
-        # print(optimal_Q)
-        # print(optimal_R)
+    #     # print(optimal_Q)
+    #     # print(optimal_R)
 
-        P = np.linalg.inv(optimal_Q)
+    #     P = np.linalg.inv(optimal_Q)
 
-        # Compute aF
-        aF = np.round(aB @ optimal_R @ P, 4)
-        Fb2 = aF[6:10, 0:4]
+    #     # Compute aF
+    #     aF = np.round(aB @ optimal_R @ P, 4)
+    #     Fb2 = aF[6:10, 0:4]
 
-        # Compute F_kp
-        F_kp = -np.block([
-            [np.zeros((2, 6))],
-            [np.zeros((4, 2)), Fb2]])
-        # Compute F_kd
-        F_kd = -aF[4:10, 4:10]
+    #     # Compute F_kp
+    #     F_kp = -np.block([
+    #         [np.zeros((2, 6))],
+    #         [np.zeros((4, 2)), Fb2]])
+    #     # Compute F_kd
+    #     F_kd = -aF[4:10, 4:10]
 
-        print(f"Solved F_kp is: {F_kp}")
-        print(f"Solved F_kd is: {F_kd}")
+    #     print(f"Solved F_kp is: {F_kp}")
+    #     print(f"Solved F_kd is: {F_kd}")
 
-        # Check if the problem is solved successfully
-        if np.all(np.linalg.eigvals(P) > 0):
-            logging.info("LMIs feasible")
-        else:
-            print("LMIs infeasible")
+    #     # Check if the problem is solved successfully
+    #     if np.all(np.linalg.eigvals(P) > 0):
+    #         logging.info("LMIs feasible")
+    #     else:
+    #         print("LMIs infeasible")
 
-        res = (F_kp, F_kd)
-        is_solved = True
+    #     res = (F_kp, F_kd)
+    #     is_solved = True
 
-    # Failed to solve LMIs
-    else:
-        print(f"tracking_err: {tracking_err}")
-        print("Optimization failed.")
-        res = None
-        is_solved = False
+    # # Failed to solve LMIs
+    # else:
+    #     print(f"tracking_err: {tracking_err}")
+    #     print("Optimization failed.")
+    #     res = None
+    #     is_solved = False
 
     # module = importlib.import_module(f'{solver}.cpg_solver')
     # cpg_solve = getattr(module, 'cpg_solve')

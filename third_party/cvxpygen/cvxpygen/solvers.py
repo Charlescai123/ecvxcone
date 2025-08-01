@@ -306,19 +306,19 @@ class ECVXCONEInterface(SolverInterface):
     
     def generate_code(self, configuration, code_dir, solver_code_dir, cvxpygen_directory, parameter_canon, gradient, prefix):
         # copy sources
-        if os.path.isdir(solver_code_dir):
-            shutil.rmtree(solver_code_dir)
-        os.mkdir(solver_code_dir)
-        dirs_to_copy = ['src', 'include']
-        for dtc in dirs_to_copy:
-            shutil.copytree(os.path.join(cvxpygen_directory, '../../../', dtc),
-                            os.path.join(solver_code_dir, dtc))
+        # if os.path.isdir(solver_code_dir):
+        #     shutil.rmtree(solver_code_dir)
+        # os.mkdir(solver_code_dir)
+        # dirs_to_copy = ['src', 'include']
+        # for dtc in dirs_to_copy:
+        #     shutil.copytree(os.path.join(cvxpygen_directory, '../../../', dtc),
+        #                     os.path.join(solver_code_dir, dtc))
         # copy files
-        files_to_copy = ['CMakeLists.txt']
-        for fl in files_to_copy:
-            shutil.copyfile(os.path.join(cvxpygen_directory, '../../..', fl),
-                            os.path.join(solver_code_dir, fl))
-        shutil.copy(os.path.join(cvxpygen_directory, 'template', 'LICENSE'), code_dir)
+        # files_to_copy = ['CMakeLists.txt']
+        # for fl in files_to_copy:
+        #     shutil.copyfile(os.path.join(cvxpygen_directory, '../../..', fl),
+        #                     os.path.join(solver_code_dir, fl))
+        # shutil.copy(os.path.join(cvxpygen_directory, 'template', 'LICENSE'), code_dir)
 
         # disable BLAS and LAPACK
         # read_write_file(os.path.join(code_dir, 'c', 'solver_code', 'scs.mk'),
@@ -340,11 +340,11 @@ class ECVXCONEInterface(SolverInterface):
         #                                     sdir + 'include\n' + indent + sdir + 'linsys'))
 
         # adjust setup.py
-        indent = ' ' * 30
-        read_write_file(os.path.join(code_dir, 'setup.py'),
-                        lambda x: x.replace("os.path.join('c', 'solver_code', 'include'),",
-                                            "os.path.join('c', 'solver_code', 'include'),\n" +
-                                            indent + "os.path.join('c', 'solver_code'),"))
+        # indent = ' ' * 30
+        # read_write_file(os.path.join(code_dir, 'setup.py'),
+        #                 lambda x: x.replace("os.path.join('c', 'solver_code', 'include'),",
+        #                                     "os.path.join('c', 'solver_code', 'include'),\n" +
+        #                                     indent + "os.path.join('c', 'solver_code'),"))
     
     def declare_workspace(self, f, prefix, parameter_canon) -> None:
         
