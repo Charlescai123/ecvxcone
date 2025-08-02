@@ -696,16 +696,10 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             if (SHOW_PROGRESS) {
                 printf("Certificate of dual infeasibility found.\n");
             }
-
-            if (DEBUG) {
-                result->s = s;
-            } else {
-                result->s = NULL; 
-                Matrix_Free(s);
-            }
             
             result->x = x;
             result->y = NULL;
+            result->s = s;
             result->z = NULL;
             result->status = DUAL_INFEASIBLE;
             result->gap = 0.0;
