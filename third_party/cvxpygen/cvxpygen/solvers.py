@@ -304,21 +304,29 @@ class ECVXCONEInterface(SolverInterface):
                          indices_constr, indptr_constr, shape_constr, canon_constants, enable_settings)
         
     
+    @staticmethod
+    def ret_prim_func_exists(variable_info: PrimalVariableInfo) -> bool:
+        return True
+
+    @staticmethod
+    def ret_dual_func_exists(dual_variable_info: DualVariableInfo) -> bool:
+        return True
+    
     def generate_code(self, configuration, code_dir, solver_code_dir, cvxpygen_directory, parameter_canon, gradient, prefix):
         # copy sources
-        if os.path.isdir(solver_code_dir):
-            shutil.rmtree(solver_code_dir)
-        os.mkdir(solver_code_dir)
-        dirs_to_copy = ['src', 'include']
-        for dtc in dirs_to_copy:
-            shutil.copytree(os.path.join(cvxpygen_directory, '../../../', dtc),
-                            os.path.join(solver_code_dir, dtc))
+        # if os.path.isdir(solver_code_dir):
+        #     shutil.rmtree(solver_code_dir)
+        # os.mkdir(solver_code_dir)
+        # dirs_to_copy = ['src', 'include']
+        # for dtc in dirs_to_copy:
+        #     shutil.copytree(os.path.join(cvxpygen_directory, '../../../', dtc),
+        #                     os.path.join(solver_code_dir, dtc))
         # copy files
-        files_to_copy = ['CMakeLists.txt']
-        for fl in files_to_copy:
-            shutil.copyfile(os.path.join(cvxpygen_directory, '../../..', fl),
-                            os.path.join(solver_code_dir, fl))
-        shutil.copy(os.path.join(cvxpygen_directory, 'template', 'LICENSE'), code_dir)
+        # files_to_copy = ['CMakeLists.txt']
+        # for fl in files_to_copy:
+        #     shutil.copyfile(os.path.join(cvxpygen_directory, '../../..', fl),
+        #                     os.path.join(solver_code_dir, fl))
+        # shutil.copy(os.path.join(cvxpygen_directory, 'template', 'LICENSE'), code_dir)
 
         # disable BLAS and LAPACK
         # read_write_file(os.path.join(code_dir, 'c', 'solver_code', 'scs.mk'),

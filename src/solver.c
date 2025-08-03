@@ -369,6 +369,9 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             }
             
             result->x = x;
+            result->y = y;
+            result->z = z;
+            result->s = s;
             result->status = OPTIMAL;
             result->gap = gap;
             result->relative_gap = relgap;
@@ -384,9 +387,6 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
 
             // Free the KKT context
             KKTCholContext_Free(kkt_ctx);
-
-            // Free the workspace matrices
-            // FreeWorkspaceMatrices1(dx, dy, ds, dz, dkappa, dtau);
 
             return OPTIMAL;
         }
@@ -619,6 +619,9 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             }
 
             result->x = x;
+            result->y = y;
+            result->z = z;
+            result->s = s;
             result->status = sol_status;
             result->gap = gap;
             result->relative_gap = relgap_valid ? relgap : 0.0;
@@ -656,8 +659,10 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
                 printf("Certificate of primal infeasibility found.\n");
             }
 
-            result->x = NULL;
-            result->s = NULL;
+            result->x = x;
+            result->s = s;
+            result->y = y;
+            result->z = z;
             result->status = PRIMAL_INFEASIBLE;
             result->gap = 0.0;
             result->relative_gap = 0.0;
@@ -698,9 +703,9 @@ int conelp(ECVXConeWorkspace* ecvxcone_ws, ECVXConeSettings* settings)
             }
             
             result->x = x;
-            result->y = NULL;
+            result->y = y;
             result->s = s;
-            result->z = NULL;
+            result->z = z;
             result->status = DUAL_INFEASIBLE;
             result->gap = 0.0;
             result->relative_gap = 0.0;

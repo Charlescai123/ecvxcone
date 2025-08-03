@@ -587,10 +587,10 @@ def write_c_code(problem: cp.Problem, configuration: Configuration,
                configuration, prim_variable_info, dual_variable_info, 
                parameter_info, solver_interface, gradient_interface)
 
-    if not configuration.explicit:
-        write_file(os.path.join(solver_code_dir, 'CMakeLists.txt'), 'a',
-                write_canon_cmake,
-                'solver', solver_interface)
+    # if not configuration.explicit:
+    #     write_file(os.path.join(solver_code_dir, 'CMakeLists.txt'), 'a',
+    #             write_canon_cmake,
+    #             'solver', solver_interface)
     
     if configuration.gradient_two_stage:
         read_write_file(os.path.join(osqp_code_dir, 'CMakeLists.txt'),
