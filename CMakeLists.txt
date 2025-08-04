@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 # Project name and language
 project(ecvxcone C)
 
-set(CMAKE_C_FLAGS_RELEASE "-O3 -march=native -ffast-math")
+# set(CMAKE_C_FLAGS_RELEASE "-O3 -march=native -ffast-math")
+set(CMAKE_C_FLAGS_RELEASE "-O1 -g -march=native -ffast-math")
 set(CMAKE_BUILD_TYPE Release)
 
 # Set the C standard to C99

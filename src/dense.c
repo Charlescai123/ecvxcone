@@ -152,7 +152,7 @@ matrix * Matrix_New(int nrows, int ncols, int id)
   else if (nrows*ncols == 0) 
     return a;
   else {
-    free(a);
+    Matrix_Free(a);
     err_no_memory;
   }
 }
@@ -216,6 +216,7 @@ matrix *Matrix_NewFromMatrix(matrix *src, int id)
 
   matrix *a;
   if (!(a = Matrix_New(src->nrows, src->ncols, id))) {
+    Matrix_Free(a);
     err_no_memory;
   }
 

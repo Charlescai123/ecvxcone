@@ -136,7 +136,7 @@ void lmi_init() {
     R_mat->buffer = CPG_Prim.R;
 
     // Initialize P
-    // P = Matrix_New(10, 10, DOUBLE);
+    // P_mat = Matrix_New(10, 10, DOUBLE);
 
     // Initialize aF
     aF = Matrix_New(10, 10, DOUBLE);
@@ -212,7 +212,6 @@ void update_TrackingErrorSquare() {
 
 // Post-processing function to finalize the feedback gain matrices
 void post_processing() {
-    if (!P_mat) Matrix_Free(P_mat);  // Free P if it was previously allocated
     P_mat = Matrix_NewFromMatrix(Q_mat, Q_mat->id);  // Ensure P is initialized
 
     // P = inverse(Q)
@@ -224,6 +223,7 @@ void post_processing() {
     blas_gemm(aB, R_mat, temp, 'N', 'N', NULL, NULL, -1, -1, -1, 0, 0, 0, 0, 0, 0);
     blas_gemm(temp, P_mat, aF, 'N', 'N', NULL, NULL, -1, -1, -1, 0, 0, 0, 0, 0, 0);
     Matrix_Free(temp);  // Free the temporary matrix
+    Matrix_Free(P_mat);  // Free P after use
 
     // Fb2 = aF[6:10, 0:4]
     // F_kp = -np.block([
@@ -256,8 +256,10 @@ void update_Matrices() {
     update_Matrix_B();
     update_TrackingErrorSquare();
 
+    // Call the solver
     cpg_solve();
 
+    // Retrieve the ultimate feedback gain matrices
     post_processing();
 }
 
