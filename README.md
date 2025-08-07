@@ -17,10 +17,26 @@
 
 ---
 
+ecvxcone (**e**mbedded **CVX** for **cone** programming) is a lightweight solver tailored for embedded system use. It supports general cone programming optimization problems including LP, QP, SCOP and SDP.
+
+> ![NOTE]
+> Currently this library supports the constraints in the linear form. The support for quadratic form of constraints may be added in the future version.
+
+Inspired by [cvxopt](https://github.com/cvxopt/cvxopt), `ecvxcone` rewrites the solver logic in pure C to better suit embedded and real-time applications.
+
 We recommend purchasing an NVMe SSD, as it offers significantly faster read and write speeds compared to the built-in 64GB eMMC. Once installed, use the [SDK Manager](https://developer.nvidia.com/sdk-manager) to flash the JetPack SDK directly onto the NVMe drive.
 
+Vision: Despite the growing demand for real-time optimization in embedded systems, there remains a lack of open-source conic solvers designed specifically for deployment on resource-constrained devices. This repository aims to bridge that gap by providing a lightweight, efficient conic solver framework tailored for embedded applications—especially in the context of the rising adoption of machine learning at the edge. 
 
-> **Real-time (RT) Kernel:** To patch the RT kernel, please refer to [Jetson-RT-Kernel](https://github.com/Charlescai123/Jetson-RT-Kernel) for more details.
+Moreover, there exists a significant disconnect between academic research and practical industrial deployment. Many optimization algorithms are proposed in theory but lack accessible implementations or validation due to hardware limitations and the absence of suitable open-source tooling. We hope this repository can serve as a foundation for both academic experimentation and real-world deployment, fostering collaboration across research and industry.
+
+
+| Argument         | Meaning       | Type          |
+| :-------------:    | :-------------: | :-------------: |
+| `LP` (Linear Programming)      | $$ \min_{\mathbf{x}} ~\mathbf{c}^T\mathbf{x} + d \\ \begin{aligned} \text{s.t.} ~&\mathbf{A}\mathbf{x} \leq \mathbf{b} \\ &\mathbf{G}\mathbf{x} = \mathbf{h} \end{aligned} $$ | String          | 
+| `QP` (Quadratic Programming)   | $$ \min_{\mathbf{x}} ~\frac{1}{2}\mathbf{x}^T\mathbf{Q}\mathbf{x} + \mathbf{p}^T\mathbf{x} + r \\ \begin{aligned} \text{s.t.} ~&\mathbf{A}\mathbf{x} \leq \mathbf{b} \\ &\mathbf{G}\mathbf{x} = \mathbf{h} \end{aligned} $$ | String          |
+| `SOCP` (Second-Order Conic Programming)    | $$\min_{\mathbf{x}} ~\mathbf{f}^T\mathbf{x} \\ \text{s.t.} ~ \|\|\mathbf{A}_i\mathbf{x} + \mathbf{b}_i\|\|_2 \leq \mathbf{c}_i^T\mathbf{x} + d_i, ~i = 1,...,n \\ \mathbf{G}\mathbf{x} = \mathbf{h} $$  | Dict            |
+| `SDP` (Semi-Definite Programming) | $$ \min_{\mathbf{x}} ~\mathbf{c}^T\mathbf{x} + d \\ \begin{aligned} \text{s.t.} ~&\mathbf{A}\mathbf{x} \leq \mathbf{b} \\ &\mathbf{G}\mathbf{x} = \mathbf{h} \end{aligned} $$ | List of Strings |
 
 
 For remote onboard Jetson debug, you can use other remote connection tool (e.g., *Anydesk*, *Teamviewer*). However, these softwares are not typically useful if the Jetson is not connected to a monitor. According to the [solution](https://askubuntu.com/questions/453109/add-fake-display-when-no-monitor-is-plugged-in), there're two options:
@@ -94,42 +110,19 @@ git clone git@github.com:Charlescai123/edge-learning-go2.git
 
 ---
 
-Digital Twin Video (In Rviz):
+asdsa
 
-https://github.com/user-attachments/assets/6d2f6dc1-04ef-45a7-abfa-cc55f1900507
+## 📝 References
 
-## 📝 Citation
 
-Please star or cite below papers if you find this repo helpful 🙏
+[2] Lieven Vandenberghe. Conic Programming. Department of Electrical and Computer Engineering, UCLA. Available at: https://www.seas.ucla.edu/~vandenbe/publications/coneprog.pdf
 
-```
-@misc{cai2025runtimelearningquadrupedrobots,
-      title={Runtime Learning of Quadruped Robots in Wild Environments}, 
-      author={Yihao Cai and Yanbing Mao and Lui Sha and Hongpeng Cao and Marco Caccamo},
-      year={2025},
-      eprint={2503.04794},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2503.04794}, 
-}
-```
+[3] Martin S. Andersen and Lieven Vandenberghe. Introduction to Mathematical Optimization. Unpublished manuscript. Available at: https://www.seas.ucla.edu/~vandenbe/publications/mlbook.pdf
 
-```
-@misc{cao2024simplexenabledsafecontinuallearning,
-      title={Simplex-enabled Safe Continual Learning Machine}, 
-      author={Hongpeng Cao and Yanbing Mao and Yihao Cai and Lui Sha and Marco Caccamo},
-      year={2024},
-      eprint={2409.05898},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2409.05898}, 
-}
-```
 
 ---
 
 ## 🎉 Acknowledgments
 
-Special thanks to the contributions from these repos:
-
-- [quadruped_ros2_control](https://github.com/legubiao/quadruped_ros2_control): ROS2 Framework for ocs-based mpc control.
+- [cvxopt](https://github.com/cvxopt/cvxopt): Base references for implementation of cone programming.
+- [cvxpygen](https://github.com/cvxgrp/cvxpygen): Some base codes for modeling DPP-compliant problem.

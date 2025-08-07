@@ -26,6 +26,7 @@ void test_tracking_err() {
  * Setup the ECVXConeWorkspace structure.
  */
 ECVXConeWorkspace* ecvxcone_setup(int n_var, int n_ineq, int n_eq, int nnz_G, int nnz_A, DIMs *dims, ECVXConeSettings *settings)
+
 {
     // c
     if (Canon_Params_conditioning.c == NULL) {
