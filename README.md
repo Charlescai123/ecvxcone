@@ -376,9 +376,9 @@ We welcome contributions from developers to add new optimization algorithms and 
 
 [6] Li, Linyi, Tao Xie, and Bo Li. "Sok: Certified robustness for deep neural networks." 2023 IEEE symposium on security and privacy (SP). IEEE, 2023.
 
-[7] Cotter, Andrew, et al. "Optimization with non-differentiable constraints with applications to fairness, recall, churn, and other goals." Journal of Machine Learning Research 20.172 (2019): 1-59.
+[7] Dathathri, Sumanth, et al. "Enabling certification of verification-agnostic networks via memory-efficient semidefinite programming." Advances in Neural Information Processing Systems 33 (2020): 5318-5331.
 
-[8] Dathathri, Sumanth, et al. "Enabling certification of verification-agnostic networks via memory-efficient semidefinite programming." Advances in Neural Information Processing Systems 33 (2020): 5318-5331.
+[8] Cotter, Andrew, et al. "Optimization with non-differentiable constraints with applications to fairness, recall, churn, and other goals." Journal of Machine Learning Research 20.172 (2019): 1-59.
 
 [9] Deits, Robin & Tedrake, Russ. (2015). Computing Large Convex Regions of Obstacle-Free Space Through Semidefinite Programming. Springer Tracts in Advanced Robotics. 107. 109-124. 10.1007/978-3-319-16595-0_7
 
