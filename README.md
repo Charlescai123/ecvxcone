@@ -346,7 +346,7 @@ The table below presents results for running the example `Linear Matrix Inequali
 
 With the growing adoption of machine learning and optimization at the edge, we envision an optimization toolchain that can run efficiently on devices with limited computational resources, delivering real-time performance in those resource-constrained environments.
 
-In addition, there remains a persistent gap between academic research and industrial deployment. Many optimization algorithms stay confined to theory, limited by hardware constraints and the lack of practical, open-source implementations. This repository aspires to bridge that gap—empowering both academic exploration and real-world deployment, while fostering closer collaboration between research and industry.
+In addition, there remains a gap between academic research and industrial deployment. Many optimization algorithms stay confined to theory, limited by hardware constraints and the lack of practical, open-source implementations. This repository aspires to bridge that gap—empowering both academic exploration and real-world deployment, while fostering closer collaboration between research and industry.
 
 ### 🚀 Applications
 
