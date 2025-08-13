@@ -9,7 +9,7 @@
 
 `ecvxcone` (**e**mbedded **CVX** for **cone** programming) is a lightweight solver tailored for embedded system use, which supports general conic optimization problems.
 
-[cvxopt](https://github.com/cvxopt/cvxopt) is a Python-based optimization library that leverages C-based high-performance computation backends such as LAPACK and BLAS. In contrast, `ecvxcone` removes the Python API layer and re-implements the solver logic entirely in pure C, making it better suited for embedded and real-time applications. Its core conic solver is an implementation of the [Interior-Point Method](https://en.wikipedia.org/wiki/Interior-point_method). It further optimizes the canonicalization process for problem families to enhance real-time performance.
+[cvxopt](https://github.com/cvxopt/cvxopt) [[1]](#-references) is a Python-based optimization library that leverages C-based high-performance computation backends such as LAPACK and BLAS. In contrast, `ecvxcone` removes the Python API layer and re-implements the solver logic entirely in pure C, making it better suited for embedded and real-time applications. Its core conic solver is an implementation of the [Interior-Point Method](https://en.wikipedia.org/wiki/Interior-point_method) [[2]](#-references). It further optimizes the canonicalization process for problem families to enhance real-time performance.
 
 
 
