@@ -388,6 +388,20 @@ We welcome contributions from developers to add new optimization algorithms and 
 
 ---
 
+## 📝 Citation
+
+Please cite the paper below or star this repo if you find it helpful 🙏
+
+```
+@inproceedings{
+anonymous2025realdrl,
+title={Real-{DRL}: Teach and Learn in Reality},
+author={Anonymous},
+booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+year={2025},
+url={https://openreview.net/forum?id=gXZlZAeqay}
+
+
 ## 🎉 Acknowledgments
 
 - [cvxopt](https://github.com/cvxopt/cvxopt): Base references for implementation of cone programming.
